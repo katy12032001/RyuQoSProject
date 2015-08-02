@@ -67,7 +67,6 @@ class initial(app_manager.RyuApp):
         #     self.nodes[switch.dp.id] = switch.dp
 
         links_list = get_link(self.topology_api_app, None)
-
         links = [(link.src.dpid, link.dst.dpid, {'port': link.src.port_no})
                  for link in links_list]
         self.net.add_edges_from(links)
@@ -85,12 +84,27 @@ class initial(app_manager.RyuApp):
                 data_collection.switch_inner_port.append(inner_port1)
             if inner_port2 not in data_collection.switch_inner_port:
                 data_collection.switch_inner_port.append(inner_port2)
-        print len(data_collection.switch_inner_port)
-        group = collection.group('whole')
+
+        group = collection.Group('whole')
         group.topology = self.net
         group.switches = switches
         group.links = links
-        data_collection.topo_list.update({'whole': group})
+
+        if data_collection.group_list.get('whole') is not None:
+            # print 'a'
+            g = data_collection.group_list.get('whole')
+
+            g.switches = group.switches
+            g.topology = group.topology
+            g.links = group.links
+            # print g.switches, g.topology, g.links
+        else:
+            # print 'b'
+            data_collection.group_list.update({'whole': group})
+        # g2 = data_collection.group_list.get('whole')
+        # print g2.switches
+        # print g2.topology.nodes(), g2.topology.edges()
+        # print g2.links
 
     @set_ev_cls(event.EventLinkAdd)
     def get_topology_for_add(self, ev):

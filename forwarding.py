@@ -47,8 +47,8 @@ class forwarding(app_manager.RyuApp):
         pkt_eth = pkt.get_protocols(ethernet.ethernet)[0]
         pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
         pkt_arp = pkt.get_protocol(arp.arp)
+        print pkt_eth.dst, pkt_eth.src
 
-        print pkt_eth.src, pkt_eth.dst
         if pkt_arp:
             print 'arp'
             self._handle_arp(msg, datapath, in_port, pkt_eth, pkt_arp)
@@ -62,65 +62,70 @@ class forwarding(app_manager.RyuApp):
             else:
                 check = self._check_ingroup(pkt_eth.src, pkt_ipv4.src,
                                             pkt_eth.dst, pkt_ipv4.dst)
-
-                if check != -1:
+                # print 'ckeck', check
+                if check != "-1":
                     self._handle_ipv4(datapath, in_port, pkt_eth,
-                                    pkt_ipv4, pkt, pkt_eth.dst, check)
+                                      pkt_ipv4, pkt, pkt_eth.dst, check)
 
     def _handle_ipv4(self, datapath, port, pkt_ethernet, pkt_ipv4, pkt,
                      dst_mac, group_id):
-        print 'ipv4'
+        print 'ipv4', group_id
         parser = datapath.ofproto_parser
-        group = data_collection.topo_list.get(group_id)
+        group = data_collection.group_list.get(group_id)
         net = group.topology
         m_dst = data_collection.member_list.get(dst_mac)
-        ipv4_path = self._generate_path(net,
-                                        pkt_ethernet.src, pkt_ethernet.dst,
-                                        port, m_dst.port,
-                                        datapath.id, m_dst.datapath.id)
-        for next_n in ipv4_path:
-            index = ipv4_path.index(next_n)
-            if index != 0 and index != len(ipv4_path)-1:
-                out_port = None
-                net = group.topology
-                if index == len(ipv4_path)-2:
-                    out_port = m_dst.port
-                else:
-                    out_port = net[next_n][ipv4_path[index+1]]['port']
+        if m_dst is not None:
+            # print "><><>>"
+            # print dst_mac
+            # print m_dst.port
 
-                actions = [parser.OFPActionOutput(out_port)]
-                out_datapath = get_switch(self.topology_api_app, dpid=next_n)
-                if pkt_ipv4.proto == inet.IPPROTO_TCP:
-                    print 'tcp'
-                    pkt_tcp = pkt.get_protocol(tcp.tcp)
-                    match = parser.OFPMatch(eth_src=pkt_ethernet.src,
-                                            eth_dst=pkt_ethernet.dst,
-                                            eth_type=ether.ETH_TYPE_IP,
-                                            ipv4_src=pkt_ipv4.src,
-                                            ipv4_dst=pkt_ipv4.dst,
-                                            ip_proto=pkt_ipv4.proto,
-                                            tcp_src=pkt_tcp.src_port,
-                                            tcp_dst=pkt_tcp.dst_port)
-                elif pkt_ipv4.proto == inet.IPPROTO_UDP:
-                    print 'udp'
-                    pkt_udp = pkt.get_protocol(udp.udp)
-                    match = parser.OFPMatch(eth_src=pkt_ethernet.src,
-                                            eth_dst=pkt_ethernet.dst,
-                                            eth_type=ether.ETH_TYPE_IP,
-                                            ipv4_src=pkt_ipv4.src,
-                                            ipv4_dst=pkt_ipv4.dst,
-                                            ip_proto=pkt_ipv4.proto,
-                                            udp_src=pkt_udp.src_port,
-                                            udp_dst=pkt_udp.dst_port)
-                else:
-                    print 'icmp'
-                    match = parser.OFPMatch(eth_src=pkt_ethernet.src,
-                                            eth_dst=pkt_ethernet.dst,
-                                            eth_type=ether.ETH_TYPE_IP,
-                                            ipv4_src=pkt_ipv4.src,
-                                            ipv4_dst=pkt_ipv4.dst)
+            ipv4_path = self._generate_path(net,
+                                            pkt_ethernet.src, pkt_ethernet.dst,
+                                            port, m_dst.port,
+                                            datapath.id, m_dst.datapath.id)
+            for next_n in ipv4_path:
+                index = ipv4_path.index(next_n)
+                if index != 0 and index != len(ipv4_path)-1:
+                    out_port = None
+                    net = group.topology
+                    if index == len(ipv4_path)-2:
+                        out_port = m_dst.port
+                    else:
+                        out_port = net[next_n][ipv4_path[index+1]]['port']
 
-                ofputils.add_flow(out_datapath[0].dp, 10, match, actions)
+                    actions = [parser.OFPActionOutput(out_port)]
+                    out_datapath = get_switch(self.topology_api_app, dpid=next_n)
+                    if pkt_ipv4.proto == inet.IPPROTO_TCP:
+                        print 'tcp'
+                        pkt_tcp = pkt.get_protocol(tcp.tcp)
+                        match = parser.OFPMatch(eth_src=pkt_ethernet.src,
+                                                eth_dst=pkt_ethernet.dst,
+                                                eth_type=ether.ETH_TYPE_IP,
+                                                ipv4_src=pkt_ipv4.src,
+                                                ipv4_dst=pkt_ipv4.dst,
+                                                ip_proto=pkt_ipv4.proto,
+                                                tcp_src=pkt_tcp.src_port,
+                                                tcp_dst=pkt_tcp.dst_port)
+                    elif pkt_ipv4.proto == inet.IPPROTO_UDP:
+                        print 'udp'
+                        pkt_udp = pkt.get_protocol(udp.udp)
+                        match = parser.OFPMatch(eth_src=pkt_ethernet.src,
+                                                eth_dst=pkt_ethernet.dst,
+                                                eth_type=ether.ETH_TYPE_IP,
+                                                ipv4_src=pkt_ipv4.src,
+                                                ipv4_dst=pkt_ipv4.dst,
+                                                ip_proto=pkt_ipv4.proto,
+                                                udp_src=pkt_udp.src_port,
+                                                udp_dst=pkt_udp.dst_port)
+                    else:
+                        print 'icmp'
+                        match = parser.OFPMatch(eth_src=pkt_ethernet.src,
+                                                eth_dst=pkt_ethernet.dst,
+                                                eth_type=ether.ETH_TYPE_IP,
+                                                ipv4_src=pkt_ipv4.src,
+                                                ipv4_dst=pkt_ipv4.dst)
+
+                    ofputils.add_flow(out_datapath[0].dp, 10, match, actions)
 
     def _handle_arp(self, msg, datapath, port, pkt_ethernet, pkt_arp):
         """Handle ARP Setting method."""
@@ -130,15 +135,15 @@ class forwarding(app_manager.RyuApp):
             self._handle_member_info(datapath, port, pkt_ethernet)
         parser = datapath.ofproto_parser
         if pkt_arp.opcode == arp.ARP_REPLY:
-            group = data_collection.topo_list.get('whole')
+            group = data_collection.group_list.get('whole')
             net = group.topology
             dst = data_collection.member_list.get(pkt_arp.dst_mac)
             if dst is not None:
                 print dst.port, dst.datapath
                 arp_path = self._generate_path(net, pkt_ethernet.src,
-                                              pkt_ethernet.dst, port,
-                                              dst.port, datapath.id,
-                                              dst.datapath.id)
+                                               pkt_ethernet.dst, port,
+                                               dst.port, datapath.id,
+                                               dst.datapath.id)
                 for next_n in arp_path:
                     index = arp_path.index(next_n)
                     if index != 0 and index != len(arp_path)-1:
@@ -174,11 +179,14 @@ class forwarding(app_manager.RyuApp):
         return path
 
     def _check_ingroup(self, src_mac, src_ip, dst_mac, dst_ip):
-        check = -1
-        if src_ip == constant.Gateway_IP:
-            check = 0
-        if dst_ip == constant.Gateway_IP:
-            check = 0
+        # m_src = data_collection.member_list.get(src_mac)
+        # if m_src is not None:
+        #     print m_src.group_id
+        check = "-1"
+        if src_mac == constant.Gateway_Mac:
+            check = "whole"
+        if dst_mac == constant.Gateway_Mac:
+            check = "whole"
         else:
             m_src = data_collection.member_list.get(src_mac)
             m_dst = data_collection.member_list.get(dst_mac)
@@ -195,19 +203,20 @@ class forwarding(app_manager.RyuApp):
             member = data_collection.member_list.get(pkt_ethernet.src)
             member.datapath = datapath
             member.port = port
-            returnid = member.group_id
+            # returnid = member.group_id
             print member.datapath, member.port
         else:
             print 'none'
-            if constant.NeedToAuth == 0:
-                member = collection.member(pkt_ethernet.src, "whole")
+            if constant.NeedToAuth == 0 or pkt_ethernet.src == constant.Gateway_Mac:
+                member = collection.Member(pkt_ethernet.src, "whole")
                 member.datapath = datapath
                 member.port = port
                 data_collection.member_list.update({pkt_ethernet.src: member})
-                returnid = member.group_id
+                # returnid = member.group_id
                 print datapath.id, port, pkt_ethernet.src
                 print member.datapath.id, member.port
-        return returnid
+
+        # return returnid
 
     def _broadcast_pkt(self, msg):
         datapath = msg.datapath

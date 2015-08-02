@@ -2,7 +2,7 @@
 import networkx as nx
 
 
-class member:
+class Member:
 
     """Class for Member."""
 
@@ -14,7 +14,7 @@ class member:
         self.port = None
 
 
-class group:
+class Group:
 
     """Class for Group."""
 
@@ -25,3 +25,30 @@ class group:
         self.switches = []
         self.links = []
         self.members = []
+
+
+class Flow:
+
+        """Class for Flow."""
+
+        def __init__(self, dpid, src_mac, dst_mac, src_ip, dst_ip,
+                     ip_proto, src_port, dst_port, byte, exist):
+            """Initial Setting methid."""
+            self.dpid = dpid
+            self.src_mac = src_mac
+            self.dst_mac = dst_mac
+            self.src_ip = src_ip
+            self.dst_ip = dst_ip
+            self.ip_proto = ip_proto
+            self.src_port = src_port
+            self.dst_port = dst_port
+            self.byte_count_1 = 0
+            self.byte_count_2 = byte
+            self.app = ""
+            self.rate = 0
+            self.exist = exist
+
+        def rate_calculation(self):
+            """calculate flow rate."""
+            if self.byte_count_2 > self.byte_count_1:
+                self.rate = (self.byte_count_2 - self.byte_count_1)/5
