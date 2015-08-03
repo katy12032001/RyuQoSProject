@@ -31,7 +31,6 @@ def update_data_to_db(item, data, db_ip, db):
             db_data = collection.find({'membername': key}).limit(1)
             content = []
             for app in data.get(key).apprate:
-                print app, ">>>>."
                 if app is None:
                     content.append({'None': data.get(key).apprate.get(app)})
                 else:
