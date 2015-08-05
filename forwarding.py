@@ -205,6 +205,9 @@ class forwarding(app_manager.RyuApp):
             member.port = port
             # returnid = member.group_id
             print member.datapath, member.port
+            group = data_collection.group_list.get(member.group_id)
+            if pkt_ethernet.src not in group.members:
+                group.members.append(pkt_ethernet.src)
         else:
             print 'none'
             if constant.NeedToAuth == 0 or pkt_ethernet.src == constant.Gateway_Mac:

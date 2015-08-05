@@ -33,3 +33,20 @@ def set_meter_entry(datapath, bandwidth, id, mod):
         req = parser.OFPMeterMod(datapath, command,
                                  ofproto.OFPMF_KBPS, id, [band])
         datapath.send_msg(req)
+
+
+def add_flow_for_ratelimite(datapath, priority, match, actions, meter, buffer_id=None):
+    print 'add flows'
+    ofproto = datapath.ofproto
+    parser = datapath.ofproto_parser
+    print "aaaaa",datapath, priority, match, actions, meter, type(meter)
+    inst = [parser.OFPInstructionMeter(int(meter)), parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
+
+    if buffer_id:
+        mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
+                                priority=priority, match=match,
+                                idle_timeout=15, instructions=inst)
+    else:
+        mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
+                                idle_timeout=15, match=match, instructions=inst)
+    datapath.send_msg(mod)

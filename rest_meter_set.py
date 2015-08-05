@@ -6,6 +6,8 @@ from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from webob import Response
 from ryu.topology.api import get_switch
 
+from db import data_collection
+
 
 from utils import ofputils
 
@@ -34,6 +36,11 @@ class MeterSetup(app_manager.RyuApp):
         for dp in switch_list:
             print dp.dp.id
             ofputils.set_meter_entry(dp.dp, int(bandwdith), int(meterid), command)
+
+        if command == 'ADD':
+            data_collection.meter_list.update({bandwdith: meterid})
+        elif command == 'DELETE':
+            data_collection.meter_list.pop(bandwdith)
 
 
 # curl -X PUT -d '{"bandwidth" : "8192", "command": "ADD"}'

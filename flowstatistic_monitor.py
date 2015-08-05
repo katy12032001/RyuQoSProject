@@ -11,6 +11,7 @@ from ryu.ofproto import inet
 from var import constant
 from db import data_collection
 from db import collection
+from utils import db_util
 
 
 class flowstatistic_monitor(app_manager.RyuApp):
@@ -34,12 +35,12 @@ class flowstatistic_monitor(app_manager.RyuApp):
                     data_collection.flow_list[key].exist = 0
                     print key, flow.rate
             # get flow from switches
-            print data_collection.flow_list
+            db_util.update_app_for_flows(constant.FlowClassification_IP)
+            print "flow_length", len(data_collection.flow_list)
             switch_list = get_switch(self.topology_api_app, None)
             for dp in switch_list:
                 print dp.dp.id
                 if str(dp.dp.id) == constant.Detect_switch_DPID:
-                    print '>,'
                     self._request_stats(dp.dp)
             hub.sleep(5)
 

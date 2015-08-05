@@ -21,9 +21,10 @@ class Memeber_record:
 
     """class for member record."""
 
-    def __init__(self, id):
+    def __init__(self, id, group):
         """Initial Setting method."""
         self.id = id
+        self.group_id = group
         self.flow = []
         self.apprate = {}
 

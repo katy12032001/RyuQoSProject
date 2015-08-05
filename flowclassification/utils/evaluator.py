@@ -1,17 +1,18 @@
 """Method for evaluation."""
-from record import statistic
-from var import constant
+from flowclassification.record import statistic
+from flowclassification.var import constant
 
 
 def app_evaluation(flow_list):
     """Method for app valuation."""
     tmp_apprate = {}
-    for flow_info in flow_list:
-        app_name = flow_info.get('app')
+    for key in flow_list:
+        flow_info = flow_list[key]
+        app_name = flow_info.app
         if app_name in tmp_apprate:
-            tmp_apprate[app_name] += int(flow_info.get('rate'))
+            tmp_apprate[app_name] += int(flow_info.rate)
         else:
-            tmp_apprate.update({app_name: int(flow_info.get('rate'))})
+            tmp_apprate.update({app_name: int(flow_info.rate)})
 
     for key in tmp_apprate:
         if key in statistic.database_app_record:
@@ -33,33 +34,52 @@ def app_evaluation(flow_list):
             print key, flow.rate
 
 
-def member_evaluation(flow_list):
+def member_evaluation(flow_list, member_list):
     """Method for member valuation."""
     tmp_member_rate = {}
-    for flow_info in flow_list:
+    for key in flow_list:
+        flow_info = flow_list[key]
         tmp = None
-        if flow_info.get('src_mac') == constant.Gateway_Mac:
-            tmp = flow_info.get('dst_mac')
+        if flow_info.src_mac == constant.Gateway_Mac:
+            tmp = flow_info.dst_mac
         else:
-            tmp = flow_info.get('src_mac')
-
-        if tmp in tmp_member_rate:
-            tmp_apprate = tmp_member_rate.get(tmp).apprate
-            app_name = flow_info.get('app')
-            if app_name in tmp_apprate:
-                tmp_apprate[app_name] += int(flow_info.get('rate'))
+            tmp = flow_info.src_mac
+        print flow_info.dst_mac, flow_info.src_mac
+        if member_list.get(tmp) is not None:
+            if tmp in tmp_member_rate:
+                tmp_apprate = tmp_member_rate.get(tmp).apprate
+                app_name = flow_info.app
+                if app_name in tmp_apprate:
+                    tmp_apprate[app_name] += int(flow_info.rate)
+                else:
+                    tmp_apprate.update({app_name: int(flow_info.rate)})
             else:
-                tmp_apprate.update({app_name: int(flow_info.get('rate'))})
-        else:
-            tmp_member_rate.update({tmp: statistic.Memeber_record(tmp)})
-            tmp_apprate = tmp_member_rate.get(tmp).apprate
-            tmp_apprate.update({flow_info.get('app'): int(flow_info.get('rate'))})
+                print tmp, member_list.get(tmp)
+                group_id = member_list.get(tmp).group_id
+                if group_id is not None:
+                    print "group_id", group_id, "name", tmp
+                    tmp_member_rate.update({tmp: statistic.Memeber_record(tmp, group_id)})
+                    tmp_apprate = tmp_member_rate.get(tmp).apprate
+                    tmp_apprate.update({flow_info.app: int(flow_info.rate)})
 
-        tmp_member_rate.get(tmp).flow.append(flow_info)
+            tmp_member_rate.get(tmp).flow.append(flow_info)
 
     statistic.database_member_record = tmp_member_rate
 
-    # for tt in statistic.database_member_record:
-    #     print tt
-    #     for qq in statistic.database_member_record.get(tt).apprate:
-    #         print qq, statistic.database_member_record.get(tt).apprate.get(qq)
+def group_evaluation(member_list, group_list):
+    tmp_group = {}
+    for key in group_list:
+        tmp_group.update({key: statistic.Group_record(key)})
+        print key, group_list.get(key).members
+        for member in group_list.get(key).members:
+            tmp_group.get(key).member.update({member: member_list.get(member)})
+            print member, type(member_list.get(member))
+            if member_list.get(member) is not None:
+                m_app = member_list.get(member).apprate
+                for app in m_app:
+                    if app in tmp_group.get(key).apprate:
+                        tmp_group.get(key).apprate[app] += int(m_app.get(app))
+                    else:
+                        tmp_group.get(key).apprate.update({app: int(m_app.get(app))})
+
+    statistic.database_group_record = tmp_group
