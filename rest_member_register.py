@@ -32,12 +32,16 @@ class member_register(app_manager.RyuApp):
             print 1
             member = collection.Member(memberid, groupid)
             data_collection.member_list.update({memberid: member})
+            data_collection.group_list.get(groupid).members.append(memberid)
             print member.name, member.group_id
         else:
             print 2
             member = data_collection.member_list.get(memberid)
             member.name = memberid
-            member.group_id = groupid
+            if member.group_id != groupid:
+                data_collection.group_list.get(member.group_id).members.remove(memberid)
+                member.group_id = groupid
+                data_collection.group_list.get(groupid).members.append(memberid)
             print member.name, member.group_id
 
 

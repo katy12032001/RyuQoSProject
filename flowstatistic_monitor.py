@@ -36,10 +36,10 @@ class flowstatistic_monitor(app_manager.RyuApp):
                     print key, flow.rate
             # get flow from switches
             db_util.update_app_for_flows(constant.FlowClassification_IP)
-            print "flow_length", len(data_collection.flow_list)
+            # print "flow_length", len(data_collection.flow_list)
             switch_list = get_switch(self.topology_api_app, None)
             for dp in switch_list:
-                print dp.dp.id
+                # print dp.dp.id
                 if str(dp.dp.id) == constant.Detect_switch_DPID:
                     self._request_stats(dp.dp)
             hub.sleep(5)
@@ -52,7 +52,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
     def _flow_stats_reply_handler(self, ev):
-        print 'aa'
+        # print 'aa'
         for stat in ev.msg.body:
             if stat.match.get('eth_type') == ether.ETH_TYPE_IP:
                 key_tuples = stat.match.get('eth_src')\
@@ -63,7 +63,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
 
                 if stat.match.get('ip_proto') == inet.IPPROTO_TCP:
                     key_tuples += str(stat.match.get('tcp_src')) + str(stat.match.get('tcp_dst'))
-                    print key_tuples
+                    # print key_tuples
                     if data_collection.flow_list.get(key_tuples) is None:
                         flow_value = collection.Flow(ev.msg.datapath.id,
                                                      stat.match.get('eth_src'),

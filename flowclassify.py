@@ -23,7 +23,7 @@ class FlowClassify(app_manager.RyuApp):
             evaluator.app_evaluation(data_collection.flow_list)
             print statistic.database_app_record
             evaluator.member_evaluation(data_collection.flow_list, data_collection.member_list)
-            print "@@@@@@@@@@@@"
+            print "Flow Statistic Class."
             for key in statistic.database_member_record:
                 print "1", key, statistic.database_member_record[key]
                 for key2 in statistic.database_member_record[key].apprate:

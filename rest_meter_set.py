@@ -34,7 +34,7 @@ class MeterSetup(app_manager.RyuApp):
         print meterid
         switch_list = get_switch(self.topology_api_app, None)
         for dp in switch_list:
-            print dp.dp.id
+            print dp.dp.id, type(meterid), type(bandwdith), int(bandwdith), int(meterid)
             ofputils.set_meter_entry(dp.dp, int(bandwdith), int(meterid), command)
 
         if command == 'ADD':

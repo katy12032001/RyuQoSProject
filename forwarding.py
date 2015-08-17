@@ -215,6 +215,7 @@ class forwarding(app_manager.RyuApp):
                 member.datapath = datapath
                 member.port = port
                 data_collection.member_list.update({pkt_ethernet.src: member})
+                data_collection.group_list.get('whole').members.append(pkt_ethernet.src)
                 # returnid = member.group_id
                 print datapath.id, port, pkt_ethernet.src
                 print member.datapath.id, member.port

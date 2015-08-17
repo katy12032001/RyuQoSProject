@@ -6,12 +6,14 @@ from ryu.base import app_manager
 from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 
 from db import data_collection
+from ratelimitation.utils import control
+from ratelimitation.setting import setup
+
 from utils import db_util, ofputils
 from var import constant
 
 import collections
 
-# url = '/get_flow_info/{flows}'
 get_flow_info_instance_name = 'get_flow_info_api_app'
 url_flow = '/flow_info_flow'
 url = '/flow_info_app/{appname}'
@@ -30,61 +32,18 @@ class FlowInfoSetup(app_manager.RyuApp):
         wsgi.register(FlowInfoSetupRest,
                       {get_flow_info_instance_name: self})
 
-    def set_ratelimite_for_app(self, appname, bandwidth):
+    def set_ratelimite_for_app(self, appname, meter_id, group_id, state):
         """Set rate control for applications"""
-        db_util.update_app_for_flows(constant.FlowClassification_IP)
-        flow_to_be_handle = []
-        key_set = data_collection.flow_list.keys()
-        for key in key_set:
-            flow_info = data_collection.flow_list[key]
-            if flow_info.app == appname:
-                flow_to_be_handle.append(flow_info)
+        #control(appname, int(meter_id))
+        if setup.ratelimite_setup_for_specialcase.get(group_id) is not None:
+            appset = setup.ratelimite_setup_for_specialcase.get(group_id)
+            appset.update({appname: {'state': state, 'meter_id': int(meter_id)}})
+        else:
+            setup.ratelimite_setup_for_specialcase.update({group_id: {appname: {'state': state, 'meter_id': int(meter_id)}}})
 
-        for flow in flow_to_be_handle:
-            datapath = data_collection.member_list.get(flow.dst_mac).datapath
-            out_port = data_collection.member_list.get(flow.dst_mac).port
-
-            parser = datapath.ofproto_parser
-            actions = [parser.OFPActionOutput(out_port)]
-            if flow.ip_proto == inet.IPPROTO_TCP:
-                match = parser.OFPMatch(eth_src=flow.src_mac,
-                                        eth_dst=flow.dst_mac,
-                                        eth_type=ether.ETH_TYPE_IP,
-                                        ipv4_src=flow.src_ip,
-                                        ipv4_dst=flow.dst_ip,
-                                        ip_proto=flow.ip_proto,
-                                        tcp_src=flow.src_port,
-                                        tcp_dst=flow.dst_port)
-            else:
-                match = parser.OFPMatch(eth_src=flow.src_mac,
-                                        eth_dst=flow.dst_mac,
-                                        eth_type=ether.ETH_TYPE_IP,
-                                        ipv4_src=flow.src_ip,
-                                        ipv4_dst=flow.dst_ip,
-                                        ip_proto=flow.ip_proto,
-                                        udp_src=flow.src_port,
-                                        udp_dst=flow.dst_port)
-
-
-            od = collections.OrderedDict(sorted(data_collection.meter_list.items()))
-            p = od.keys()
-            print len(p)
-            tmp = p[0]
-            for key in p:
-                if bandwidth < key:
-                    break
-                tmp = key
-            index = p.index(tmp)
-            meter_id = data_collection.meter_list.get(p[index])
-            ofputils.add_flow_for_ratelimite(datapath, 20, match, actions, meter_id)
-
-
-        print appname, bandwidth
 
 # curl -X GET -d http://127.0.0.1:8080/flow_info_flow
-
-
-# curl -X PUT -d '{"bandwidth" : "8192"}' http://127.0.0.1:8080/flow_info_app/a
+# curl -X PUT -d '{"meter_id" : "8192", "group_id" : "group_1", "state" : "up"}' http://127.0.0.1:8080/flow_info_app/a
 
 class FlowInfoSetupRest(ControllerBase):
 
@@ -98,7 +57,6 @@ class FlowInfoSetupRest(ControllerBase):
     @route('flow_data', url_flow, methods=['GET'])
     def get_flow_data(self, req, **kwargs):
         """Get Flow data method."""
-        print ">"
         dic = {}
         for key in data_collection.flow_list:
             flow_c = data_collection.flow_list[key]
@@ -116,6 +74,8 @@ class FlowInfoSetupRest(ControllerBase):
         app = str(kwargs['appname'])
         content = req.body
         json_link = json.loads(content)
-        bandwidth = str(json_link.get('bandwidth'))
+        meter_id = str(json_link.get('meter_id'))
+        group_id = str(json_link.get('group_id'))
+        state = str(json_link.get('state'))
 
-        self.get_flow_info.set_ratelimite_for_app(app, bandwidth)
+        self.get_flow_info.set_ratelimite_for_app(app, meter_id, group_id, state)
