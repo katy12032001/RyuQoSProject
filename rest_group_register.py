@@ -44,8 +44,8 @@ class group_setting(app_manager.RyuApp):
             group.links = links
 
         group = data_collection.group_list.get(groupid)
-        db_util.update_db_for_group("127.0.0.1", "Rate_for_SlicingProject",
-                                    "Group_collection", group)
+        # db_util.update_db_for_group("127.0.0.1", "Rate_for_SlicingProject",
+        #                             "Group_collection", group)
 
 
 # curl -X PUT -d '{"link" : "(1, 2, 4):(2, 1, 3)", "switches" : "2, 1"}'

@@ -39,7 +39,8 @@ class member_register(app_manager.RyuApp):
             member = data_collection.member_list.get(memberid)
             member.name = memberid
             if member.group_id != groupid:
-                data_collection.group_list.get(member.group_id).members.remove(memberid)
+                if member.group_id != "whole":
+                    data_collection.group_list.get(member.group_id).members.remove(memberid)
                 member.group_id = groupid
                 data_collection.group_list.get(groupid).members.append(memberid)
             print member.name, member.group_id

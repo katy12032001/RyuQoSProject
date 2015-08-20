@@ -47,8 +47,7 @@ class forwarding(app_manager.RyuApp):
         pkt_eth = pkt.get_protocols(ethernet.ethernet)[0]
         pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
         pkt_arp = pkt.get_protocol(arp.arp)
-        print pkt_eth.dst, pkt_eth.src
-
+        # print pkt_eth.src, pkt_eth.dst
         if pkt_arp:
             print 'arp'
             self._handle_arp(msg, datapath, in_port, pkt_eth, pkt_arp)
@@ -62,8 +61,9 @@ class forwarding(app_manager.RyuApp):
             else:
                 check = self._check_ingroup(pkt_eth.src, pkt_ipv4.src,
                                             pkt_eth.dst, pkt_ipv4.dst)
-                # print 'ckeck', check
-                if check != "-1":
+                if check != "-1" or pkt_ipv4.src == constant.Controller_IP or pkt_ipv4.dst == constant.Controller_IP:
+                    if check == "-1":
+                        check = 'whole'
                     self._handle_ipv4(datapath, in_port, pkt_eth,
                                       pkt_ipv4, pkt, pkt_eth.dst, check)
 
@@ -74,10 +74,8 @@ class forwarding(app_manager.RyuApp):
         group = data_collection.group_list.get(group_id)
         net = group.topology
         m_dst = data_collection.member_list.get(dst_mac)
+        print 'm_dst', m_dst
         if m_dst is not None:
-            # print "><><>>"
-            # print dst_mac
-            # print m_dst.port
 
             ipv4_path = self._generate_path(net,
                                             pkt_ethernet.src, pkt_ethernet.dst,
@@ -157,6 +155,7 @@ class forwarding(app_manager.RyuApp):
                         out_datapath = get_switch(self.topology_api_app,
                                                   dpid=next_n)
                         match = parser.OFPMatch(eth_src=pkt_ethernet.src,
+                                                eth_dst=pkt_ethernet.dst,
                                                 eth_type=ether.ETH_TYPE_ARP,
                                                 arp_op=arp.ARP_REPLY)
                         ofputils.add_flow(out_datapath[0].dp, 10, match,
@@ -179,46 +178,54 @@ class forwarding(app_manager.RyuApp):
         return path
 
     def _check_ingroup(self, src_mac, src_ip, dst_mac, dst_ip):
-        # m_src = data_collection.member_list.get(src_mac)
-        # if m_src is not None:
-        #     print m_src.group_id
         check = "-1"
         if src_mac == constant.Gateway_Mac:
             check = "whole"
-        if dst_mac == constant.Gateway_Mac:
+            if constant.NeedToAuth == 1:
+                if data_collection.member_list.get(dst_mac) is not None:
+                    m_dst = data_collection.member_list.get(dst_mac)
+                    # print m_dst, m_dst.group_id
+                    if m_dst.group_id == 'whole':
+                        check = "-1"
+        elif dst_mac == constant.Gateway_Mac:
             check = "whole"
+            if constant.NeedToAuth == 1:
+                if data_collection.member_list.get(src_mac) is not None:
+                    m_src = data_collection.member_list.get(src_mac)
+                    # print m_src, m_src.group_id
+                    if m_src.group_id == 'whole':
+                        check = "-1"
         else:
             m_src = data_collection.member_list.get(src_mac)
             m_dst = data_collection.member_list.get(dst_mac)
             if m_dst is not None and m_src is not None:
                 if m_dst.group_id == m_src.group_id:
                     check = m_dst.group_id
-
+        print 'check', check
         return check
 
     def _handle_member_info(self, datapath, port, pkt_ethernet):
         returnid = None
         if data_collection.member_list.get(pkt_ethernet.src) is not None:
-            print 'have register'
+            # print 'have register'
             member = data_collection.member_list.get(pkt_ethernet.src)
             member.datapath = datapath
             member.port = port
             # returnid = member.group_id
-            print member.datapath, member.port
+            # print member.datapath, member.port
             group = data_collection.group_list.get(member.group_id)
             if pkt_ethernet.src not in group.members:
                 group.members.append(pkt_ethernet.src)
         else:
-            print 'none'
-            if constant.NeedToAuth == 0 or pkt_ethernet.src == constant.Gateway_Mac:
-                member = collection.Member(pkt_ethernet.src, "whole")
-                member.datapath = datapath
-                member.port = port
-                data_collection.member_list.update({pkt_ethernet.src: member})
-                data_collection.group_list.get('whole').members.append(pkt_ethernet.src)
-                # returnid = member.group_id
-                print datapath.id, port, pkt_ethernet.src
-                print member.datapath.id, member.port
+            # print 'none'
+            # if constant.NeedToAuth == 0 or pkt_ethernet.src == constant.Gateway_Mac:
+            # if pkt_ethernet.src == constant.Gateway_Mac:
+            member = collection.Member(pkt_ethernet.src, "whole")
+            member.datapath = datapath
+            member.port = port
+            data_collection.member_list.update({pkt_ethernet.src: member})
+            data_collection.group_list.get('whole').members.append(pkt_ethernet.src)
+            # returnid = member.group_id
 
         # return returnid
 
