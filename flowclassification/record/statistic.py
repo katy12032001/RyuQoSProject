@@ -38,3 +38,4 @@ class Group_record:
         self.group_id = group_id
         self.member = {}
         self.apprate = {}
+        self.total = 0.0

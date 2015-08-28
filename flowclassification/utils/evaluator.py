@@ -4,7 +4,7 @@ from flowclassification.var import constant
 
 
 def app_evaluation(flow_list):
-    """Method for app valuation."""
+    """Method for app evaluation."""
     tmp_apprate = {}
     for key in flow_list:
         flow_info = flow_list[key]
@@ -35,7 +35,7 @@ def app_evaluation(flow_list):
 
 
 def member_evaluation(flow_list, member_list):
-    """Method for member valuation."""
+    """Method for member evaluation."""
     tmp_member_rate = {}
     for key in flow_list:
         flow_info = flow_list[key]
@@ -44,7 +44,7 @@ def member_evaluation(flow_list, member_list):
             tmp = flow_info.dst_mac
         else:
             tmp = flow_info.src_mac
-        print flow_info.dst_mac, flow_info.src_mac
+        # print flow_info.dst_mac, flow_info.src_mac
         if member_list.get(tmp) is not None:
             if tmp in tmp_member_rate:
                 tmp_apprate = tmp_member_rate.get(tmp).apprate
@@ -66,7 +66,9 @@ def member_evaluation(flow_list, member_list):
 
     statistic.database_member_record = tmp_member_rate
 
+
 def group_evaluation(member_list, group_list):
+    """Method for group evaluation."""
     tmp_group = {}
     for key in group_list:
         tmp_group.update({key: statistic.Group_record(key)})

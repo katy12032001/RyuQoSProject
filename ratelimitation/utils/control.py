@@ -1,13 +1,11 @@
-__author__ = 'katywu'
-
 from ryu.ofproto import ether, inet
 
 from utils import ofputils
 from db import data_collection
 
 
-def set_ratelimite_for_app(appname, meter_id, group, state):
-        """Set rate control for applications"""
+def set_ratelimite_for_app(appname, meter_id, group, state, d_or_m):
+        """Set rate control for applications."""
         flow_to_be_handle = []
         key_set = data_collection.flow_list.keys()
         memberlist = data_collection.group_list.get(group).members
@@ -41,5 +39,11 @@ def set_ratelimite_for_app(appname, meter_id, group, state):
                                         ip_proto=flow.ip_proto,
                                         udp_src=flow.src_port,
                                         udp_dst=flow.dst_port)
+            priority = 20
+            if d_or_m == 'm':
+                priority = 30
+            elif d_or_m == 'o':
+                priority = 10
 
-            ofputils.add_flow_for_ratelimite(datapath, 20, match, actions, meter_id, state)
+            ofputils.add_flow_for_ratelimite(datapath, priority, match,
+                                             actions, meter_id, state)

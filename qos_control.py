@@ -2,15 +2,19 @@
 
 from ryu.base import app_manager
 from ryu.lib import hub
+from ryu.topology.api import get_switch
 
 from ratelimitation.setting import setup
 from ratelimitation.utils import control
 from flowclassification.record import statistic
 from db import data_collection
-from dynamic_qos.utils import similarity
+from dynamic_qos.utils import mathimetic
+from dynamic_qos.utils import rate_setup
+from var import constant
 
-import numpy as np
+import numpy
 import math
+
 
 class QosControl(app_manager.RyuApp):
 
@@ -20,64 +24,83 @@ class QosControl(app_manager.RyuApp):
         """Initial Setting method."""
         super(QosControl, self).__init__(*args, **kwargs)
         self.monitor_thread = hub.spawn(self._monitor)
+        self.topology_api_app = self
 
     def _monitor(self):
         while True:
             self._control_manual()
             self._control_dynamic()
-
-            hub.sleep(5)
+            hub.sleep(25)
 
     def _control_manual(self):
-        print 'manual'
+        print 'INFO [qos_control._control_manual]\n  >>  manual control begin'
         setting = setup.ratelimite_setup_for_specialcase
         for group in setting.keys():
             for app in setting.get(group).keys():
                 if setting.get(group).get(app).get('state') == 'up':
-                    control.set_ratelimite_for_app(app, setting.get(group).get(app).get("meter_id"), group, 'up')
+                    control.set_ratelimite_for_app(app, setting.get(group).get(app).get("meter_id"), group, 'up', 'm')
                 else:
-                    control.set_ratelimite_for_app(app, setting.get(group).get(app).get("meter_id"), group, 'down')
+                    control.set_ratelimite_for_app(app, setting.get(group).get(app).get("meter_id"), group, 'down', 'o')
                     setting.get(group).pop(app)
 
     def _control_dynamic(self):
-        print '<<<<dynamic>>>>>>'
-        # mean_value_for_group = similarity.mean_value()
-        # print mean_value_for_group
+        print 'INFO [qos_control._control_dynamic]\n  >>  dynamic control begin'
         group_list = data_collection.group_list.keys()
-        print group_list
+
+        # get whole data array
+        # then calculate normalization & average data
         original_data = self._get_all_data_from_db()
-        normalize_d, mean_d = similarity.normalization_and_average(original_data)
+        normalize_d, mean_d, var_setup = mathimetic.normalization_and_average(original_data)
 
         whole_predict_data = {}
         ratio_app = {}
+        group_total_list = []
         for group_id in group_list:
             if group_id != 'whole':
-                data = self._predict(group_id, mean_d, normalize_d)
-                print 'mean', mean_d
-                print 'data', normalize_d
-
-            '''
-            whole_predict_data.update({group_id: data})
-            app_list = statistic.database_app_record.keys()
-            member_list = data.keys()
-            ratio = []
-            ratio_a = {}
-            for app in app_list:
-                tmp = 0.0
-                for member in member_list:
-                    tmp += data.get(member).get(app)
-                ratio_a.update({app: tmp})
-                ratio.append(tmp)
-
-            keys_r = ratio_a.keys()
-            for d in keys_r:
-                if sum(ratio) != 0:
-                    ratio_a[d] = ratio_a.get(d)/sum(ratio)
+                if statistic.database_group_record.get(group_id) is not None:
+                    group_total_list.append(statistic.database_group_record[group_id].total)
                 else:
-                    ratio_a[d] = 0
-            ratio_app.update({group_id: ratio_a})
-            '''
+                    group_total_list.append(0.0)
 
+                # predict the unknown bandwidth for apps & return the real
+                data, data_un = self._predict(group_id, mean_d, normalize_d)
+                data = self._return_to_real_num(data, var_setup.get(group_id))
+                whole_predict_data.update({group_id: data})
+
+                # claculate the ratio between apps
+                app_list = statistic.database_app_record.keys()
+                member_list = data.keys()
+                ratio = []
+                ratio_a = {}
+                ratio_c = {}
+
+                for app in app_list:
+                    tmp = 0.0
+                    app_rate_list = []
+                    for member in member_list:
+                        tmp += data.get(member).get(app)
+                        app_rate_list.append(data.get(member).get(app))
+                    divide = len(member_list)
+                    if numpy.std(app_rate_list) > numpy.average(app_rate_list):
+                        divide = 1
+                    ratio_a.update({app: tmp})
+                    ratio_c.update({app: divide})
+                    ratio.append(tmp)
+
+                keys_r = ratio_a.keys()
+                for d in keys_r:
+                    if sum(ratio) > 0:
+                        ratio_a[d] = ratio_a.get(d)/sum(ratio)
+                        ratio_a[d] = ratio_a[d] / ratio_c.get(d)
+                    else:
+                        ratio_a[d] = 0.0
+                ratio_app.update({group_id: ratio_a})
+
+        # control bandwidth between apps
+        rate_list = [statistic.database_app_record[key].rate for key in statistic.database_app_record]
+        switch_list = get_switch(self.topology_api_app, None)
+        rate_setup.rate_control_for_apps(rate_list, group_total_list, group_list,
+                                         ratio_app, switch_list, constant.Capacity)
 
     def _get_all_data_from_db(self):
         group_list = data_collection.group_list.keys()
@@ -98,12 +121,10 @@ class QosControl(app_manager.RyuApp):
                                 a.update({app: m.apprate.get(app)})
                     member_data.update({member: a})
                 all_data.update({group_id: member_data})
-        print "<!!!!!!!!!!!all data!!!!!!!!!!!!!!>", all_data
         return all_data
 
     def _get_array_for_group(self, group_id, whole_data):
         group_data = whole_data.get(group_id)
-        print group_data
         if group_data is not None:
             for key in group_data.keys():
                 app_list = group_data.get(key).get('app_list').keys()
@@ -112,7 +133,6 @@ class QosControl(app_manager.RyuApp):
                     data = group_data.get(key).get('app_list')
                     data[app_list[i]] = value[i]
                 group_data[key] = group_data.get(key).get('app_list')
-        print group_data
         app_list = statistic.database_app_record.keys()
         member_list = group_data.keys()
         if member_list is not None:
@@ -124,41 +144,45 @@ class QosControl(app_manager.RyuApp):
                         member.update({app: -1.0})
         return group_data
 
-
     def _predict(self, group_id, mean_value_for_group, data_ori):
-        print '<predict begin>'
+        print 'INFO [qos_control._predict]\n  >>  predict begin'
         data = self._get_array_for_group(group_id, data_ori)
-        print 'orginal data =>', data
+        print '  >> orginal data =>', data
         data_ans = {}
 
+        # Using Collabrative filtering to predict
         if data is not None:
             data_ans = data.copy()
             data_m = data.keys()
-            print data_m
             for m in data_m:
-                print 'predict people', m
                 m_d = data.get(m)
                 app = m_d.keys()
                 for a in app:
-                    print a, m, m_d.get(a)
                     if m_d.get(a) == -1.0:
                         p1 = mean_value_for_group.get(group_id).get(m)
                         p2_u = 0.0
                         p2_d = 0.0
                         for pm in data_m:
                             if pm != m:
-                                print 'handle people', pm
                                 if data.get(pm).get(a) != -1:
-                                    print 't :hd & mean', data.get(pm).get(a) , mean_value_for_group.get(group_id).get(pm)
                                     t = data.get(pm).get(a) - mean_value_for_group.get(group_id).get(pm)
-                                    t = t*similarity.get_similarity_between_members(m, pm, data)
-                                    print 't', t
+                                    t = t*mathimetic.get_similarity_between_members(m, pm, data)
                                     p2_u += t
-                                    p2_d += math.fabs(similarity.get_similarity_between_members(m,pm,data))
-                        print p2_d, p2_u, p1
-                        if p2_d!= 0:
+                                    p2_d += math.fabs(mathimetic.get_similarity_between_members(m,pm,data))
+                        if p2_d > 0.0:
                             gg = data_ans.get(m)
                             gg[a] = round(p2_u / p2_d + p1, 2)
-                            print '2', gg[a]
-            print 'data', data_ans
-        return data_ans
+        print '  >>  data after predicting =>', data_ans
+        return data_ans, data
+
+    def _return_to_real_num(self, data, setup_list):
+        for member in data.keys():
+            list = setup_list.get(member)
+            member = data[member]
+            for app in member.keys():
+                member[app] = member[app] / 10.0
+                member[app] *= list[1]
+                member[app] *= list[0]
+                if member[app] <= 0.0:
+                    member[app] = 0.0
+        return data

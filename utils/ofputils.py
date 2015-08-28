@@ -1,4 +1,8 @@
+"""Methods for flow & meter entries setup."""
+
+
 def add_flow(datapath, priority, match, actions, buffer_id=None):
+    """Add flows."""
     print 'add flows'
     ofproto = datapath.ofproto
     parser = datapath.ofproto_parser
@@ -14,7 +18,9 @@ def add_flow(datapath, priority, match, actions, buffer_id=None):
                                 idle_timeout=15, match=match, instructions=inst)
     datapath.send_msg(mod)
 
+
 def set_meter_entry(datapath, bandwidth, id, mod):
+        """Set meter entries."""
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
 
@@ -24,6 +30,7 @@ def set_meter_entry(datapath, bandwidth, id, mod):
             add_flow_meta(datapath, 10, id, id)
         elif mod == 'MODIFY':
             command = ofproto.OFPMC_MODIFY
+            add_flow_meta(datapath, 10, id, id)
         elif mod == 'DELETE':
             command = ofproto.OFPMC_DELETE
 
@@ -33,9 +40,10 @@ def set_meter_entry(datapath, bandwidth, id, mod):
         req = parser.OFPMeterMod(datapath, command,
                                  ofproto.OFPMF_KBPS, id, [band])
         datapath.send_msg(req)
-        # add_flow_meta(datapath, 10, id, id)
+
 
 def add_flow_for_ratelimite(datapath, priority, match, actions, meter, state, buffer_id=None):
+    """add flows for rate control."""
     ofproto = datapath.ofproto
     parser = datapath.ofproto_parser
     inst = []
@@ -55,8 +63,9 @@ def add_flow_for_ratelimite(datapath, priority, match, actions, meter, state, bu
                                 idle_timeout=15, match=match, instructions=inst)
     datapath.send_msg(mod)
 
+
 def add_flow_meta(datapath, priority, meta, meter_id, buffer_id=None):
-        ofproto = datapath.ofproto
+        """Add meta data in table 1."""
         parser = datapath.ofproto_parser
         match = parser.OFPMatch(metadata = meta)
         inst = [parser.OFPInstructionMeter(meter_id)]

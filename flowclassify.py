@@ -19,7 +19,7 @@ class FlowClassify(app_manager.RyuApp):
 
     def _monitor(self):
         while True:
-            hub.sleep(5)
+            hub.sleep(10)
             evaluator.app_evaluation(data_collection.flow_list)
             print statistic.database_app_record
             evaluator.member_evaluation(data_collection.flow_list, data_collection.member_list)
@@ -35,5 +35,9 @@ class FlowClassify(app_manager.RyuApp):
             print statistic.database_group_record
             for key in statistic.database_group_record:
                 print "11", key, statistic.database_group_record[key], statistic.database_group_record[key].member.keys()
+                v = 0.0
                 for key2 in statistic.database_group_record[key].apprate:
                     print "12", key2, statistic.database_group_record[key].apprate[key2]
+                    v += statistic.database_group_record[key].apprate[key2]
+                statistic.database_group_record[key].total = v
+                print 'total', statistic.database_group_record[key].total

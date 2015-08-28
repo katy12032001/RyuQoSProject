@@ -1,22 +1,16 @@
 """Project for Rest API (Flow Info Getting)."""
 import json
 from webob import Response
-from ryu.ofproto import ether, inet
 from ryu.base import app_manager
 from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 
 from db import data_collection
-from ratelimitation.utils import control
 from ratelimitation.setting import setup
-
-from utils import db_util, ofputils
-from var import constant
-
-import collections
 
 get_flow_info_instance_name = 'get_flow_info_api_app'
 url_flow = '/flow_info_flow'
 url = '/flow_info_app/{appname}'
+
 
 class FlowInfoSetup(app_manager.RyuApp):
 
@@ -33,8 +27,7 @@ class FlowInfoSetup(app_manager.RyuApp):
                       {get_flow_info_instance_name: self})
 
     def set_ratelimite_for_app(self, appname, meter_id, group_id, state):
-        """Set rate control for applications"""
-        #control(appname, int(meter_id))
+        """Set rate control for applications."""
         if setup.ratelimite_setup_for_specialcase.get(group_id) is not None:
             appset = setup.ratelimite_setup_for_specialcase.get(group_id)
             appset.update({appname: {'state': state, 'meter_id': int(meter_id)}})
