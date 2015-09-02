@@ -49,11 +49,11 @@ class forwarding(app_manager.RyuApp):
         pkt_arp = pkt.get_protocol(arp.arp)
         # print pkt_eth.src, pkt_eth.dst
         if pkt_arp:
-            print 'arp'
+            # print 'arp'
             self._handle_arp(msg, datapath, in_port, pkt_eth, pkt_arp)
 
         elif pkt_ipv4:
-            print 'ipv4'
+            # print 'ipv4'
             if (pkt_eth.dst == mac.BROADCAST):
                 self._broadcast_pkt(msg)
             elif (pkt_ipv4.dst == self.broadip) or (pkt_ipv4.dst == self.broadip2):
@@ -74,7 +74,7 @@ class forwarding(app_manager.RyuApp):
         group = data_collection.group_list.get(group_id)
         net = group.topology
         m_dst = data_collection.member_list.get(dst_mac)
-        print 'm_dst', m_dst
+        # print 'm_dst', m_dst
         if m_dst is not None:
 
             ipv4_path = self._generate_path(net,
@@ -94,7 +94,7 @@ class forwarding(app_manager.RyuApp):
                     actions = [parser.OFPActionOutput(out_port)]
                     out_datapath = get_switch(self.topology_api_app, dpid=next_n)
                     if pkt_ipv4.proto == inet.IPPROTO_TCP:
-                        print 'tcp'
+                        # print 'tcp'
                         pkt_tcp = pkt.get_protocol(tcp.tcp)
                         match = parser.OFPMatch(eth_src=pkt_ethernet.src,
                                                 eth_dst=pkt_ethernet.dst,
@@ -105,7 +105,7 @@ class forwarding(app_manager.RyuApp):
                                                 tcp_src=pkt_tcp.src_port,
                                                 tcp_dst=pkt_tcp.dst_port)
                     elif pkt_ipv4.proto == inet.IPPROTO_UDP:
-                        print 'udp'
+                        # print 'udp'
                         pkt_udp = pkt.get_protocol(udp.udp)
                         match = parser.OFPMatch(eth_src=pkt_ethernet.src,
                                                 eth_dst=pkt_ethernet.dst,
@@ -116,7 +116,7 @@ class forwarding(app_manager.RyuApp):
                                                 udp_src=pkt_udp.src_port,
                                                 udp_dst=pkt_udp.dst_port)
                     else:
-                        print 'icmp'
+                        # print 'icmp'
                         match = parser.OFPMatch(eth_src=pkt_ethernet.src,
                                                 eth_dst=pkt_ethernet.dst,
                                                 eth_type=ether.ETH_TYPE_IP,
@@ -128,7 +128,7 @@ class forwarding(app_manager.RyuApp):
     def _handle_arp(self, msg, datapath, port, pkt_ethernet, pkt_arp):
         """Handle ARP Setting method."""
         tuple_m = (datapath.id, port)
-        print datapath.id, port
+        # print datapath.id, port
         if tuple_m not in data_collection.switch_inner_port:
             self._handle_member_info(datapath, port, pkt_ethernet)
         parser = datapath.ofproto_parser
@@ -201,7 +201,7 @@ class forwarding(app_manager.RyuApp):
             if m_dst is not None and m_src is not None:
                 if m_dst.group_id == m_src.group_id:
                     check = m_dst.group_id
-        print 'check', check
+        # print 'check', check
         return check
 
     def _handle_member_info(self, datapath, port, pkt_ethernet):

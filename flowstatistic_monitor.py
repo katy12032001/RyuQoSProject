@@ -4,6 +4,7 @@ from ryu.controller import ofp_event
 from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.topology.api import get_switch
+from ryu.controller.event import EventBase
 from ryu.lib import hub
 from ryu.ofproto import ether
 from ryu.ofproto import inet
@@ -11,11 +12,15 @@ from ryu.ofproto import inet
 from var import constant
 from db import data_collection
 from db import collection
-from utils import db_util
+
+
+class APP_UpdateEvent(EventBase):
+    def __init__(self, msg):
+        self.msg = msg
 
 
 class flowstatistic_monitor(app_manager.RyuApp):
-
+    _EVENTS = [APP_UpdateEvent]
     """Flow Statistic Class."""
 
     def __init__(self, *args, **kwargs):
@@ -23,23 +28,25 @@ class flowstatistic_monitor(app_manager.RyuApp):
         super(flowstatistic_monitor, self).__init__(*args, **kwargs)
         self.topology_api_app = self
         self.monitor_thread = hub.spawn(self._monitor)
+        self.flow_list_re = {}
 
     def _monitor(self):
         while True:
+            print '[INFO flowstatistic_monitor._monitor] Flows >'
             key_set = data_collection.flow_list.keys()
             for key in key_set:
                 flow = data_collection.flow_list[key]
                 if flow.exist == 0:
                     data_collection.flow_list.pop(key)
                 else:
+                    if self.flow_list_re.get(key) is not None:
+                        data_collection.flow_list[key].app = self.flow_list_re[key].app
                     data_collection.flow_list[key].exist = 0
-                    print key, flow.rate
-            # get flow from switches
-            db_util.update_app_for_flows(constant.FlowClassification_IP)
-            # print "flow_length", len(data_collection.flow_list)
+                    print key, flow.rate, flow.app
+            ev = APP_UpdateEvent('Update app for flow')
+            self.send_event_to_observers(ev)
             switch_list = get_switch(self.topology_api_app, None)
             for dp in switch_list:
-                # print dp.dp.id
                 if str(dp.dp.id) == constant.Detect_switch_DPID:
                     self._request_stats(dp.dp)
             hub.sleep(5)
@@ -52,14 +59,14 @@ class flowstatistic_monitor(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
     def _flow_stats_reply_handler(self, ev):
-        # print 'aa'
+        self.flow_list_re={}
         for stat in ev.msg.body:
             if stat.match.get('eth_type') == ether.ETH_TYPE_IP:
                 key_tuples = stat.match.get('eth_src')\
-                + stat.match.get('eth_dst')\
-                + stat.match.get('ipv4_src')\
-                + stat.match.get('ipv4_dst')\
-                + str(stat.match.get('ip_proto'))\
+                 + stat.match.get('eth_dst')\
+                 + stat.match.get('ipv4_src')\
+                 + stat.match.get('ipv4_dst')\
+                 + str(stat.match.get('ip_proto'))\
 
                 if stat.match.get('ip_proto') == inet.IPPROTO_TCP:
                     key_tuples += str(stat.match.get('tcp_src')) + str(stat.match.get('tcp_dst'))
@@ -75,16 +82,18 @@ class flowstatistic_monitor(app_manager.RyuApp):
                                                      stat.match.get('tcp_dst'),
                                                      stat.byte_count, 1)
                         data_collection.flow_list.update({key_tuples: flow_value})
+
                     else:
                         flow_value = data_collection.flow_list.get(key_tuples)
                         flow_value.byte_count_1 = flow_value.byte_count_2
                         flow_value.byte_count_2 = stat.byte_count
                         flow_value.rate_calculation()
                         flow_value.exist = 1
+                    self.flow_list_re.update({key_tuples: flow_value})
 
                 elif stat.match.get('ip_proto') == inet.IPPROTO_UDP:
                     key_tuples += str(stat.match.get('udp_src'))\
-                                      + str(stat.match.get('udp_dst'))
+                                      +str(stat.match.get('udp_dst'))
                     if data_collection.flow_list.get(key_tuples) is None:
                         flow_value = collection.Flow(ev.msg.datapath.id,
                                                      stat.match.get('eth_src'),
@@ -102,3 +111,4 @@ class flowstatistic_monitor(app_manager.RyuApp):
                         flow_value.byte_count_2 = stat.byte_count
                         flow_value.rate_calculation()
                         flow_value.exist = 1
+                    self.flow_list_re.update({key_tuples: flow_value})

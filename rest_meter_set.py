@@ -7,8 +7,6 @@ from webob import Response
 from ryu.topology.api import get_switch
 
 from db import data_collection
-
-
 from utils import ofputils
 
 url = '/set_meter_info/{meterid}'
