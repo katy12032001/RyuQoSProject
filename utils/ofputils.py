@@ -12,10 +12,10 @@ def add_flow(datapath, priority, match, actions, buffer_id=None):
     if buffer_id:
         mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
                                 priority=priority, match=match,
-                                idle_timeout=15, instructions=inst)
+                                idle_timeout=10, instructions=inst)
     else:
         mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-                                idle_timeout=15, match=match, instructions=inst)
+                                idle_timeout=10, match=match, instructions=inst)
     datapath.send_msg(mod)
 
 
@@ -27,12 +27,13 @@ def set_meter_entry(datapath, bandwidth, id, mod):
         command = None
         if mod == 'ADD':
             command = ofproto.OFPMC_ADD
-            add_flow_meta(datapath, 10, id, id)
+            # add_flow_meta(datapath, 10, id, id)
         elif mod == 'MODIFY':
             command = ofproto.OFPMC_MODIFY
-            add_flow_meta(datapath, 10, id, id)
+            # add_flow_meta(datapath, 10, id, id)
         elif mod == 'DELETE':
             command = ofproto.OFPMC_DELETE
+            # del_flow_meta(datapath, 10, id, id)
 
         # Policing for Scavenger class
         band = parser.OFPMeterBandDrop(rate=bandwidth,
@@ -41,6 +42,9 @@ def set_meter_entry(datapath, bandwidth, id, mod):
                                  ofproto.OFPMF_KBPS, id, [band])
         datapath.send_msg(req)
 
+        # if mod == 'ADD':
+        #     add_flow_meta(datapath, 10, id, id)
+
 
 def add_flow_for_ratelimite(datapath, priority, match, actions, meter, state, buffer_id=None):
     """add flows for rate control."""
@@ -48,19 +52,21 @@ def add_flow_for_ratelimite(datapath, priority, match, actions, meter, state, bu
     parser = datapath.ofproto_parser
     inst = []
     if state == 'up':
+        # inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
+        #         parser.OFPInstructionWriteMetadata(int(meter), 4294967295),
+        #         parser.OFPInstructionGotoTable(1)]
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
-                parser.OFPInstructionWriteMetadata(int(meter), 4294967295),
-                parser.OFPInstructionGotoTable(1)]
+                parser.OFPInstructionMeter(meter)]
     else:
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
 
     if buffer_id:
         mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
                                 priority=priority, match=match,
-                                idle_timeout=15, instructions=inst)
+                                idle_timeout=10, instructions=inst)
     else:
         mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-                                idle_timeout=15, match=match, instructions=inst)
+                                idle_timeout=10, match=match, instructions=inst)
     datapath.send_msg(mod)
 
 
@@ -76,4 +82,21 @@ def add_flow_meta(datapath, priority, meta, meter_id, buffer_id=None):
         else:
             mod = parser.OFPFlowMod(datapath=datapath, table_id=1, priority=priority,
                                     match=match, instructions=inst)
+        datapath.send_msg(mod)
+
+def del_flow_meta(datapath, priority, meta, meter_id, buffer_id=None):
+        """Add meta data in table 1."""
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        match = parser.OFPMatch(metadata = meta)
+        inst = [parser.OFPInstructionMeter(meter_id)]
+        if buffer_id:
+            mod = parser.OFPFlowMod(datapath=datapath, table_id=1, buffer_id=buffer_id,
+                                    priority=priority, match=match,
+                                    command=ofproto.OFPFC_DELETE,
+                                    instructions=inst)
+        else:
+            mod = parser.OFPFlowMod(datapath=datapath, table_id=1, priority=priority,
+                                    command=ofproto.OFPFC_DELETE_STRICT, match=match,
+                                    instructions=inst)
         datapath.send_msg(mod)

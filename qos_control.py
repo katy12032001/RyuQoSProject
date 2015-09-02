@@ -10,11 +10,13 @@ from flowclassification.record import statistic
 from db import data_collection
 from dynamic_qos.utils import mathimetic
 from dynamic_qos.utils import rate_setup
+from dynamic_qos.db import history
 from var import constant
 
 import numpy
 import math
-
+import time
+import copy
 
 class QosControl(app_manager.RyuApp):
 
@@ -27,10 +29,14 @@ class QosControl(app_manager.RyuApp):
         self.topology_api_app = self
 
     def _monitor(self):
+        f = open("record_20150831.txt",  "rw+")
+        t0 = 0
         while True:
+            t1 = time.time()
             self._control_manual()
-            self._control_dynamic()
-            hub.sleep(25)
+            self._control_dynamic(t0, t1, f)
+            hub.sleep(20)
+            t0 = t1
 
     def _control_manual(self):
         print 'INFO [qos_control._control_manual]\n  >>  manual control begin'
@@ -40,10 +46,10 @@ class QosControl(app_manager.RyuApp):
                 if setting.get(group).get(app).get('state') == 'up':
                     control.set_ratelimite_for_app(app, setting.get(group).get(app).get("meter_id"), group, 'up', 'm')
                 else:
-                    control.set_ratelimite_for_app(app, setting.get(group).get(app).get("meter_id"), group, 'down', 'o')
+                    control.set_ratelimite_for_app(app, setting.get(group).get(app).get("meter_id"), group, 'down', 'm')
                     setting.get(group).pop(app)
 
-    def _control_dynamic(self):
+    def _control_dynamic(self, timestamp0, timestamp1, file):
         print 'INFO [qos_control._control_dynamic]\n  >>  dynamic control begin'
         group_list = data_collection.group_list.keys()
 
@@ -63,7 +69,18 @@ class QosControl(app_manager.RyuApp):
                     group_total_list.append(0.0)
 
                 # predict the unknown bandwidth for apps & return the real
-                data, data_un = self._predict(group_id, mean_d, normalize_d)
+                data, data_un, r1, r2 = self._predict(group_id, mean_d, normalize_d, timestamp0)
+                his_data = {timestamp1: data_un}
+                if history.history_list.get(group_id) is None:
+                    history.history_list.update({group_id: his_data})
+                else:
+                    ori_his_data = history.history_list[group_id]
+                    up_data = ori_his_data.update(his_data)
+                    print up_data
+                    history.history_list.update({group_id: his_data})
+                # print 'history >', history.history_list, his_data
+
+                # file.write(str(timestamp1)+', '+str(r1)+', '+str(r2)+'\n')
                 data = self._return_to_real_num(data, var_setup.get(group_id))
                 whole_predict_data.update({group_id: data})
 
@@ -124,6 +141,7 @@ class QosControl(app_manager.RyuApp):
         return all_data
 
     def _get_array_for_group(self, group_id, whole_data):
+
         group_data = whole_data.get(group_id)
         if group_data is not None:
             for key in group_data.keys():
@@ -144,7 +162,9 @@ class QosControl(app_manager.RyuApp):
                         member.update({app: -1.0})
         return group_data
 
-    def _predict(self, group_id, mean_value_for_group, data_ori):
+    def _predict(self, group_id, mean_value_for_group, data_ori, t0):
+        r1 = 0.0
+        r2 = 0.0
         print 'INFO [qos_control._predict]\n  >>  predict begin'
         data = self._get_array_for_group(group_id, data_ori)
         print '  >> orginal data =>', data
@@ -152,12 +172,13 @@ class QosControl(app_manager.RyuApp):
 
         # Using Collabrative filtering to predict
         if data is not None:
-            data_ans = data.copy()
+            data_ans = copy.deepcopy(data)
             data_m = data.keys()
             for m in data_m:
                 m_d = data.get(m)
                 app = m_d.keys()
                 for a in app:
+                    # if m == 'ac:22:0b:d7:0b:ca' and a == 'facebook':
                     if m_d.get(a) == -1.0:
                         p1 = mean_value_for_group.get(group_id).get(m)
                         p2_u = 0.0
@@ -172,8 +193,24 @@ class QosControl(app_manager.RyuApp):
                         if p2_d > 0.0:
                             gg = data_ans.get(m)
                             gg[a] = round(p2_u / p2_d + p1, 2)
-        print '  >>  data after predicting =>', data_ans
-        return data_ans, data
+
+                        r1 = data[m].get(a)
+                        his_app = 0.0
+                        if t0 != 0:
+                            g_his_data = history.history_list[group_id].get(t0)
+                            if g_his_data is not None:
+                                if g_his_data.get(m) is not None:
+                                    if g_his_data[m].get(a) is not None:
+                                        his_app = g_his_data[m].get(a)
+
+                        if his_app < 0:
+                            his_app = 0
+                        g_m = data_ans.get(m)
+                        g_m[a] = 0.9*his_app + 0.1*g_m[a]
+                        r2 = g_m[a]
+
+        print '  >>  data after predicting & real =>', data_ans, data
+        return data_ans, data, str(r1), str(r2)
 
     def _return_to_real_num(self, data, setup_list):
         for member in data.keys():

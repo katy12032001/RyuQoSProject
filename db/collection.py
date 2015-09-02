@@ -44,7 +44,7 @@ class Flow:
             self.dst_port = dst_port
             self.byte_count_1 = 0
             self.byte_count_2 = byte
-            self.app = ""
+            self.app = "Others"
             self.rate = 0
             self.exist = exist
 

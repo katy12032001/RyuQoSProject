@@ -2,6 +2,7 @@
 from dynamic_qos.setup import meter_mapping
 from ratelimitation.utils import control
 from utils import ofputils
+import time
 
 
 def meter_setup(switch_list, bandwidth, index, app, group, status):
@@ -29,7 +30,10 @@ def meter_setup(switch_list, bandwidth, index, app, group, status):
                 M_list = meter_mapping.meter_and_group[group].get('Meter_setup')
                 M_list[i] = meter_setup
                 for dp in switch_list:
-                    ofputils.set_meter_entry(dp.dp, int(bandwidth), int(index), 'MODIFY')
+                    # ofputils.set_meter_entry(dp.dp, int(bandwidth), int(index), 'MODIFY')
+                    ofputils.set_meter_entry(dp.dp, int(bandwidth), int(index), 'DELETE')
+                for dp in switch_list:
+                    ofputils.set_meter_entry(dp.dp, int(bandwidth), int(index), 'ADD')
     else:
         for group in meter_mapping.meter_and_group.keys():
             list = meter_mapping.meter_and_group[group].get('Meter_setup')
