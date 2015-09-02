@@ -5,42 +5,12 @@ from utils import ofputils
 import time
 
 
-def meter_setup(switch_list, bandwidth, index, app, group, status):
-    """Set meters."""
-    # for dp in switch_list:
-    #     ofputils.set_meter_entry(dp.dp, int(bandwidth), int(index), 'ADD')
-    # meter_mapping.meter_and_group.update()
-    if status == 0:
-        meter_setup = meter_mapping.Meter_setup(int(bandwidth), app, group, index)
-        if meter_mapping.meter_and_group.get(group) is None:
-            data = {'meter_list': [index], 'Meter_setup': [meter_setup]}
-            meter_mapping.meter_and_group.update({group: data})
-            for dp in switch_list:
-                ofputils.set_meter_entry(dp.dp, int(bandwidth), int(index), 'ADD')
-        else:
-            meter_list = meter_mapping.meter_and_group[group].get('meter_list')
-            if index not in meter_list:
-                for dp in switch_list:
-                    ofputils.set_meter_entry(dp.dp, int(bandwidth), int(index), 'ADD')
-                meter_list.append(index)
-                setup_list = meter_mapping.meter_and_group[group].get('Meter_setup')
-                setup_list.append(meter_setup)
-            else:
-                i = meter_list.index(index)
-                M_list = meter_mapping.meter_and_group[group].get('Meter_setup')
-                M_list[i] = meter_setup
-                for dp in switch_list:
-                    # ofputils.set_meter_entry(dp.dp, int(bandwidth), int(index), 'MODIFY')
-                    ofputils.set_meter_entry(dp.dp, int(bandwidth), int(index), 'DELETE')
-                for dp in switch_list:
-                    ofputils.set_meter_entry(dp.dp, int(bandwidth), int(index), 'ADD')
-    else:
-        for group in meter_mapping.meter_and_group.keys():
-            list = meter_mapping.meter_and_group[group].get('Meter_setup')
-            for M in list:
-                for dp in switch_list:
-                    print 'delete entry', M.meter
-                    ofputils.set_meter_entry(dp.dp, int(M.apprate), int(M.meter), 'DELETE')
+def init_meter_setup(capacity, switch_list):
+    interval = capacity*8/10
+    for dp in switch_list:
+        for i in range(10):
+            j = i+1
+            ofputils.set_meter_entry(dp.dp, int(j*interval), int(j), 'ADD')
 
 
 def rate_control_for_apps(rate_list, group_total_list, group_list,
@@ -52,22 +22,22 @@ def rate_control_for_apps(rate_list, group_total_list, group_list,
     print 'the used bandwidth =>', sum(rate_list)
     print 'maximum we can used =>', 0.9 * capacity * 1024
 
-    if sum(rate_list) >= 0.9 * capacity * 1024:
-        if meter_mapping.have_control == 0:
-            meter_mapping.have_control = 1
-        for group_id in group_list:
-            if group_id != 'whole':
-                index = (group_list.index(group_id)+1)*10
-                print 'index', index, group_list.index(group_id), ratio_app[group_id]
-                for app in ratio_app.get(group_id).keys():
-                    print 'app meter', index, app
-                    if ratio_app[group_id].get(app) > 0:
-                        index += 1
-                        app_r = capacity * 1024 * ratio_app[group_id].get(app)
-                        print 'app rate', app_r*8/1024, ratio_app[group_id].get(app)
-                        meter_setup(switch_list, app_r*8/1024, index, app, group_id, 0)
-                        control.set_ratelimite_for_app(app, index, group_id, 'up', 'd')
-    else:
-        if meter_mapping.have_control == 1:
-            meter_mapping.have_control = 0
-            meter_setup(switch_list, 0, 0, 0, 0, 1)
+    for group_id in group_list:
+        if group_id != 'whole':
+            index = (group_list.index(group_id)+1)*10
+            print 'index', index, group_list.index(group_id), ratio_app[group_id]
+            for app in ratio_app.get(group_id).keys():
+                print 'app meter', index, app
+                if ratio_app[group_id].get(app) > 0:
+                        meter_id = int(ratio_app[group_id].get(app)*10)
+                        if meter_id < 1:
+                            meter_id = 1
+                        print 'app rate', app, meter_id
+                        if sum(rate_list) >= 0.9 * capacity * 1024:
+                            if meter_mapping.have_control == 0:
+                                meter_mapping.have_control = 1
+                            control.set_ratelimite_for_app(app, meter_id, group_id, 'up', 'd')
+                        else:
+                            if meter_mapping.have_control == 1:
+                                meter_mapping.have_control = 0
+                            control.set_ratelimite_for_app(app, meter_id, group_id, 'down', 'd')

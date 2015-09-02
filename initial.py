@@ -7,9 +7,11 @@ from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
 from ryu.topology.api import get_switch, get_link
 from ryu.topology import event
+from dynamic_qos.utils import rate_setup
 
 from db import data_collection
 from db import collection
+from var import constant
 import networkx as nx
 
 
@@ -123,6 +125,8 @@ class initial(app_manager.RyuApp):
         """Switch add."""
         print "EventSwitchEnter"
         self.get_topology_data()
+        switch_list = get_switch(self.topology_api_app, None)
+        rate_setup.init_meter_setup(constant.Capacity, switch_list)
 
     @set_ev_cls(event.EventSwitchLeave)
     def get_topology_for_swdelete(self, ev):
