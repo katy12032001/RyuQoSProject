@@ -9,9 +9,12 @@ from ryu.topology.api import get_switch
 from db import data_collection
 from var import constant
 from utils import ofputils
+from flowclassify import statistic
 
 url = '/set_qos_info/{capacity}'
 set_qos_info_instance_name = 'set_qos_info_api_app'
+app_url = '/get_app_list'
+meter_list_url = '/get_meter_list'
 
 
 class QosSetup(app_manager.RyuApp):
@@ -46,3 +49,24 @@ class QosSetupRest(ControllerBase):
         self.get_member_info.set_qos_parameter(capacity)
         return Response(content_type='application/json',
                             body=str('Success'))
+
+    @route('qos_data', app_url, methods=['GET'])
+    def get_app_list(self, req, **kwargs):
+        app_list = statistic.database_app_record.keys()
+        dic = {}
+        # app_list = ['1', '2']
+        for key in app_list:
+            dic.update({key: statistic.database_app_record[key].rate})
+        # for key in app_list:
+        #     dic.update({key: 100})
+        body = json.dumps(dic)
+        return Response(content_type='application/json', body=body)
+
+    @route('qos_data', meter_list_url, methods=['GET'])
+    def get_meter_list(self, req, **kwargs):
+        meter_list = data_collection.meter_list.keys()
+        dic = {}
+        for key in meter_list:
+            dic.update({key: data_collection.meter_list.get(key)})
+        body = json.dumps(dic)
+        return Response(content_type='application/json', body=body)

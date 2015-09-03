@@ -29,7 +29,6 @@ class MeterSetup(app_manager.RyuApp):
 
     def set_meter_to_switches(self, meterid, bandwdith, command):
         """Save Member data to database method."""
-        print meterid
         switch_list = get_switch(self.topology_api_app, None)
         for dp in switch_list:
             print dp.dp.id, type(meterid), type(bandwdith), int(bandwdith), int(meterid)
