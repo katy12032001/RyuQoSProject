@@ -47,6 +47,7 @@ class Flow:
             self.app = "Others"
             self.rate = 0
             self.exist = exist
+            self.limited = 0
 
         def rate_calculation(self):
             """calculate flow rate."""

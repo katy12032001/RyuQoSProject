@@ -3,6 +3,8 @@
 from ryu.base import app_manager
 from ryu.lib import hub
 from ryu.topology.api import get_switch
+from ryu.controller.event import EventBase
+from ryu.controller.handler import set_ev_cls
 
 from ratelimitation.setting import setup
 from ratelimitation.utils import control
@@ -17,6 +19,10 @@ import numpy
 import math
 import time
 import copy
+
+class Qos_UpdateEvent(EventBase):
+    def __init__(self, msg):
+        self.msg = msg
 
 class QosControl(app_manager.RyuApp):
 
@@ -33,12 +39,14 @@ class QosControl(app_manager.RyuApp):
         t0 = 0
         while True:
             t1 = time.time()
-            self._control_manual()
+            # self._control_manual()
             self._control_dynamic(t0, t1, f)
             hub.sleep(20)
             t0 = t1
 
-    def _control_manual(self):
+    @set_ev_cls(Qos_UpdateEvent)
+    def _control_manual(self, ev):
+        print ('[INFO QosControl._control_manual] %s' % ev.msg)
         print 'INFO [qos_control._control_manual]\n  >>  manual control begin'
         setting = setup.ratelimite_setup_for_specialcase
         for group in setting.keys():

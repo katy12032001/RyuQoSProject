@@ -9,7 +9,7 @@ from ryu.topology.api import get_switch
 from db import data_collection
 from var import constant
 from utils import ofputils
-from flowclassify import statistic
+from flowclassification.record import statistic
 
 url = '/set_qos_info/{capacity}'
 set_qos_info_instance_name = 'set_qos_info_api_app'
