@@ -12,6 +12,7 @@ class Member:
         self.group_id = group
         self.datapath = None
         self.port = None
+        self.ip = None
 
 
 class Group:

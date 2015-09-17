@@ -19,6 +19,9 @@ from utils import ofputils
 from var import constant
 from db import data_collection
 from db import collection
+from utils import log
+from detect_gateway import utils as gateway_utils
+
 import networkx as nx
 
 
@@ -53,6 +56,7 @@ class forwarding(app_manager.RyuApp):
             self._handle_arp(msg, datapath, in_port, pkt_eth, pkt_arp)
 
         elif pkt_ipv4:
+            gateway_utils.detect_gateway_main(pkt, datapath, in_port, data_collection.member_list)
             # print 'ipv4'
             if (pkt_eth.dst == mac.BROADCAST):
                 self._broadcast_pkt(msg)
@@ -130,7 +134,7 @@ class forwarding(app_manager.RyuApp):
         tuple_m = (datapath.id, port)
         # print datapath.id, port
         if tuple_m not in data_collection.switch_inner_port:
-            self._handle_member_info(datapath, port, pkt_ethernet)
+            self._handle_member_info(datapath, port, pkt_ethernet, pkt_arp)
         parser = datapath.ofproto_parser
         if pkt_arp.opcode == arp.ARP_REPLY:
             group = data_collection.group_list.get('whole')
@@ -204,13 +208,14 @@ class forwarding(app_manager.RyuApp):
         # print 'check', check
         return check
 
-    def _handle_member_info(self, datapath, port, pkt_ethernet):
+    def _handle_member_info(self, datapath, port, pkt_ethernet, pkt_arp):
         returnid = None
         if data_collection.member_list.get(pkt_ethernet.src) is not None:
             # print 'have register'
             member = data_collection.member_list.get(pkt_ethernet.src)
             member.datapath = datapath
             member.port = port
+            member.ip = pkt_arp.src_ip
             # returnid = member.group_id
             # print member.datapath, member.port
             group = data_collection.group_list.get(member.group_id)
@@ -223,10 +228,12 @@ class forwarding(app_manager.RyuApp):
             member = collection.Member(pkt_ethernet.src, "whole")
             member.datapath = datapath
             member.port = port
+            member.ip = pkt_arp.src_ip
             data_collection.member_list.update({pkt_ethernet.src: member})
             data_collection.group_list.get('whole').members.append(pkt_ethernet.src)
             # returnid = member.group_id
-
+        # log.log_backup_w('datacollection_grouplist.pkl', data_collection.group_list)
+        # log.log_backup_w('datacollection_memberlist.pkl', data_collection.member_list)
         # return returnid
 
     def _broadcast_pkt(self, msg):

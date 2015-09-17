@@ -7,6 +7,7 @@ from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from qos_control import Qos_UpdateEvent
 from db import data_collection
 from ratelimitation.setting import setup
+from utils import  log
 
 get_flow_info_instance_name = 'get_flow_info_api_app'
 url_flow = '/flow_info_flow'
@@ -29,7 +30,6 @@ class FlowInfoSetup(app_manager.RyuApp):
 
     def set_ratelimite_for_app(self, appname, meter_id, group_id, state):
         """Set rate control for applications."""
-
         if setup.ratelimite_setup_for_specialcase.get(group_id) is not None:
             appset = setup.ratelimite_setup_for_specialcase.get(group_id)
             appset.update({appname: {'state': state, 'meter_id': int(meter_id)}})
@@ -38,6 +38,8 @@ class FlowInfoSetup(app_manager.RyuApp):
 
         ev = Qos_UpdateEvent('Update qos for flow')
         self.send_event_to_observers(ev)
+
+        # log.log_backup_w('ratelimite_setup_for_specialcase.pkl', setup.ratelimite_setup_for_specialcase)
 
 
 # curl -X GET -d http://127.0.0.1:8080/flow_info_flow
