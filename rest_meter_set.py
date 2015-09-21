@@ -7,7 +7,7 @@ from webob import Response
 from ryu.topology.api import get_switch
 
 from db import data_collection
-from utils import ofputils
+from utils import ofputils, log
 
 url = '/set_meter_info/{meterid}'
 set_meter_info_instance_name = 'set_meter_info_api_app'
@@ -38,6 +38,8 @@ class MeterSetup(app_manager.RyuApp):
             data_collection.meter_list.update({bandwdith: meterid})
         elif command == 'DELETE':
             data_collection.meter_list.pop(bandwdith)
+
+        # log.log_backup_w('datacollection_meterlist.pkl', data_collection.meter_list)
 
 
 # curl -X PUT -d '{"bandwidth" : "8192", "command": "ADD"}'

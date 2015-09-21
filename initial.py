@@ -12,6 +12,9 @@ from dynamic_qos.utils import rate_setup
 from db import data_collection
 from db import collection
 from var import constant
+from utils import log
+from ratelimitation.setting import setup
+
 import networkx as nx
 
 
@@ -26,6 +29,11 @@ class initial(app_manager.RyuApp):
         super(initial, self).__init__(*args, **kwargs)
         self.topology_api_app = self
         self.net = nx.DiGraph()
+        # log.log_backup_r('datacollection_grouplist.pkl', data_collection.group_list)
+        # log.log_backup_r('datacollection_switchinnerport.pkl', data_collection.switch_inner_port)
+        # log.log_backup_r('datacollection_memberlist.pkl', data_collection.member_list)
+        # log.log_backup_r('ratelimite_setup_for_specialcase.pkl', setup.ratelimite_setup_for_specialcase)
+        # log.log_backup_r('datacollection_meterlist.pkl', data_collection.meter_list)
 
     def add_table_miss_flow(self, datapath, priority, match, actions,
                             buffer_id=None):
@@ -107,6 +115,9 @@ class initial(app_manager.RyuApp):
         # print g2.switches
         # print g2.topology.nodes(), g2.topology.edges()
         # print g2.links
+        
+        # log.log_backup_w('datacollection_grouplist.pkl', data_collection.group_list)
+        # log.log_backup_w('datacollection_switchinnerport.pkl', data_collection.switch_inner_port)
 
     @set_ev_cls(event.EventLinkAdd)
     def get_topology_for_add(self, ev):
