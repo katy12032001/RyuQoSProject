@@ -115,7 +115,7 @@ class initial(app_manager.RyuApp):
         # print g2.switches
         # print g2.topology.nodes(), g2.topology.edges()
         # print g2.links
-        
+
         # log.log_backup_w('datacollection_grouplist.pkl', data_collection.group_list)
         # log.log_backup_w('datacollection_switchinnerport.pkl', data_collection.switch_inner_port)
 

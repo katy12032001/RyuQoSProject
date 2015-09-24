@@ -26,6 +26,7 @@ class MeterSetup(app_manager.RyuApp):
         wsgi = kwargs['wsgi']
         wsgi.register(MeterSetupRest,
                       {set_meter_info_instance_name: self})
+        data_collection.meter_list.update({"drop": "-1"})
 
     def set_meter_to_switches(self, meterid, bandwdith, command):
         """Save Member data to database method."""

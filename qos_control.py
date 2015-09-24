@@ -57,6 +57,15 @@ class QosControl(app_manager.RyuApp):
                     control.set_ratelimite_for_app(app, setting.get(group).get(app).get("meter_id"), group, 'down', 'm')
                     setting.get(group).pop(app)
 
+        setting_m = setup.ratelimite_setup_for_specialcase_member
+        for group in setting_m.keys():
+            for mac in setting_m.get(group).keys():
+                if setting_m.get(group).get(mac).get('state') == 'up':
+                    control.set_ratelimite_for_member(mac, setting_m.get(group).get(mac).get("meter_id"), group, 'up', 'm')
+                else:
+                    control.set_ratelimite_for_member(mac, setting_m.get(group).get(mac).get("meter_id"), group, 'down', 'm')
+                    setting_m.get(group).pop(mac)
+
     def _control_dynamic(self, timestamp0, timestamp1, file):
         print 'INFO [qos_control._control_dynamic]\n  >>  dynamic control begin'
         group_list = data_collection.group_list.keys()

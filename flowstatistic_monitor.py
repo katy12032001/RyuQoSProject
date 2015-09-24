@@ -58,6 +58,8 @@ class flowstatistic_monitor(app_manager.RyuApp):
                 v += statistic.database_group_record[key].apprate[key2]
             statistic.database_group_record[key].total = v
             print ' > total bandwidth: ', statistic.database_group_record[key].total
+        ev = Qos_UpdateEvent('Update qos for flow')
+        self.send_event_to_observers(ev)
 
     def _monitor(self):
         while True:
@@ -73,8 +75,6 @@ class flowstatistic_monitor(app_manager.RyuApp):
                     data_collection.flow_list[key].exist = 0
                     print key, flow.rate, flow.app
             ev = APP_UpdateEvent('Update app for flow')
-            self.send_event_to_observers(ev)
-            ev = Qos_UpdateEvent('Update qos for flow')
             self.send_event_to_observers(ev)
             switch_list = get_switch(self.topology_api_app, None)
             for dp in switch_list:

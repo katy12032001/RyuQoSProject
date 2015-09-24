@@ -54,11 +54,8 @@ class QosSetupRest(ControllerBase):
     def get_app_list(self, req, **kwargs):
         app_list = statistic.database_app_record.keys()
         dic = {}
-        # app_list = ['1', '2']
         for key in app_list:
             dic.update({key: statistic.database_app_record[key].rate})
-        # for key in app_list:
-        #     dic.update({key: 100})
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
 

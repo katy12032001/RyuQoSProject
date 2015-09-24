@@ -11,8 +11,8 @@ from utils import  log
 
 get_flow_info_instance_name = 'get_flow_info_api_app'
 url_flow = '/flow_info_flow'
-url = '/flow_info_app/{appname}'
-
+url_app = '/flow_info_app/{appname}'
+url_member = '/flow_info_member/{mac}'
 
 class FlowInfoSetup(app_manager.RyuApp):
 
@@ -41,6 +41,16 @@ class FlowInfoSetup(app_manager.RyuApp):
 
         # log.log_backup_w('ratelimite_setup_for_specialcase.pkl', setup.ratelimite_setup_for_specialcase)
 
+    def set_ratelimite_for_mac(self, mac, meter_id, group_id, state):
+        """Set rate control for applications."""
+        if setup.ratelimite_setup_for_specialcase.get(group_id) is not None:
+            memberset = setup.ratelimite_setup_for_specialcase_member.get(group_id)
+            memberset.update({mac: {'state': state, 'meter_id': int(meter_id)}})
+        else:
+            setup.ratelimite_setup_for_specialcase_member.update({group_id: {mac: {'state': state, 'meter_id': int(meter_id)}}})
+
+        ev = Qos_UpdateEvent('Update qos for flow')
+        self.send_event_to_observers(ev)
 
 # curl -X GET -d http://127.0.0.1:8080/flow_info_flow
 # curl -X PUT -d '{"meter_id" : "8192", "group_id" : "group_1", "state" : "up"}' http://127.0.0.1:8080/flow_info_app/a
@@ -69,7 +79,7 @@ class FlowInfoSetupRest(ControllerBase):
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
 
-    @route('rate_for_app', url, methods=['PUT'])
+    @route('rate_for_app', url_app, methods=['PUT'])
     def set_flow_for_ratelimite_in_app(self, req, **kwargs):
         app = str(kwargs['appname'])
         content = req.body
@@ -79,3 +89,14 @@ class FlowInfoSetupRest(ControllerBase):
         state = str(json_link.get('state'))
 
         self.get_flow_info.set_ratelimite_for_app(app, meter_id, group_id, state)
+
+    @route('rate_for_member', url_member, methods=['PUT'])
+    def set_flow_for_ratelimite_for_member(self, req, **kwargs):
+        mac = str(kwargs['mac'])
+        content = req.body
+        json_link = json.loads(content)
+        meter_id = str(json_link.get('meter_id'))
+        group_id = str(json_link.get('group_id'))
+        state = str(json_link.get('state'))
+
+        self.get_flow_info.set_ratelimite_for_mac(mac, meter_id, group_id, state)
