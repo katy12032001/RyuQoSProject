@@ -6,9 +6,9 @@ from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from webob import Response
 
 import networkx as nx
-from db import data_collection
-from db import collection
-from utils import db_util
+from setting.db import data_collection
+from setting.db import collection
+from setting.utils import db_util
 
 url = '/handle_group_info/topology/{groupid}'
 get_group_info_instance_name = 'get_group_info_api_app'

@@ -5,14 +5,15 @@ from ryu.base import app_manager
 from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 
 from qos_control import Qos_UpdateEvent
-from db import data_collection
-from ratelimitation.setting import setup
-from utils import  log
+from setting.db import data_collection
+from setting.ratelimitation.setting import setup
+
+from route import urls
 
 get_flow_info_instance_name = 'get_flow_info_api_app'
-url_flow = '/flow_info_flow'
-url_app = '/flow_info_app/{appname}'
-url_member = '/flow_info_member/{mac}'
+# url_flow = '/flow_info_flow'
+# url_app = '/flow_info_app/{appname}'
+# url_member = '/flow_info_member/{mac}'
 
 class FlowInfoSetup(app_manager.RyuApp):
 
@@ -64,7 +65,7 @@ class FlowInfoSetupRest(ControllerBase):
         super(FlowInfoSetupRest, self).__init__(req, link, data, **config)
         self.get_flow_info = data[get_flow_info_instance_name]
 
-    @route('flow_data', url_flow, methods=['GET'])
+    @route('flow_data', urls.url_flow, methods=['GET'])
     def get_flow_data(self, req, **kwargs):
         """Get Flow data method."""
         dic = {}
@@ -79,7 +80,7 @@ class FlowInfoSetupRest(ControllerBase):
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
 
-    @route('rate_for_app', url_app, methods=['PUT'])
+    @route('rate_for_app', urls.url_flow_app, methods=['PUT'])
     def set_flow_for_ratelimite_in_app(self, req, **kwargs):
         app = str(kwargs['appname'])
         content = req.body
@@ -90,7 +91,7 @@ class FlowInfoSetupRest(ControllerBase):
 
         self.get_flow_info.set_ratelimite_for_app(app, meter_id, group_id, state)
 
-    @route('rate_for_member', url_member, methods=['PUT'])
+    @route('rate_for_member', urls.url_flow_member, methods=['PUT'])
     def set_flow_for_ratelimite_for_member(self, req, **kwargs):
         mac = str(kwargs['mac'])
         content = req.body

@@ -4,8 +4,8 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import udp, tcp
 from ryu.ofproto import inet
 
-from db.data_collection import switch_inner_port
-from var import constant
+from setting.db.data_collection import switch_inner_port
+from setting.variable import constant
 
 
 def dectect_by_dhcp(pkt, datapath, in_port):
@@ -46,7 +46,7 @@ def detect_by_flow(pkt, member_list):
             return_value = [member_t.datapath.id, pkt_eth.dst]
 
         print '  >>', member_s.ip, member_t.ip
-        
+
 
     return return_value
 

@@ -6,10 +6,12 @@ from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from webob import Response
 from ryu.topology.api import get_switch
 
-from db import data_collection
-from utils import ofputils, log
+from setting.db import data_collection
+from setting.utils import ofputils, log
 
-url = '/set_meter_info/{meterid}'
+from route import urls
+
+#url = '/set_meter_info/{meterid}'
 set_meter_info_instance_name = 'set_meter_info_api_app'
 
 
@@ -54,7 +56,7 @@ class MeterSetupRest(ControllerBase):
         super(MeterSetupRest, self).__init__(req, link, data, **config)
         self.get_member_info = data[set_meter_info_instance_name]
 
-    @route('meter_data', url, methods=['PUT'])
+    @route('meter_data', urls.url_meter_set, methods=['PUT'])
     def set_meter_data_(self, req, **kwargs):
         """Put Member data method."""
         meterid = str(kwargs['meterid'])

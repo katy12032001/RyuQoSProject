@@ -1,13 +1,14 @@
 from ryu.ofproto import ether, inet
 
-from utils import ofputils
-from db import data_collection
+from setting.utils import ofputils
+from setting.db import data_collection
 
 
 def set_ratelimite_for_app(appname, meter_id, group, state, d_or_m):
         """Set rate control for applications."""
         flow_to_be_handle = []
         key_set = data_collection.flow_list.keys()
+        print key_set
         memberlist = data_collection.group_list.get(group).members
         for key in key_set:
             flow_info = data_collection.flow_list[key]

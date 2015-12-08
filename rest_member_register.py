@@ -5,8 +5,8 @@ from ryu.base import app_manager
 from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from webob import Response
 
-from db import data_collection
-from db import collection
+from setting.db import data_collection
+from setting.db import collection
 
 url = '/handle_member_info/member/{memberid}'
 get_member_info_instance_name = 'get_member_info_api_app'

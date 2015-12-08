@@ -1,7 +1,7 @@
 """Mehthod for rate control in dynamic qos."""
-from dynamic_qos.setup import meter_mapping
-from ratelimitation.utils import control
-from utils import ofputils
+from setting.dynamic_qos.setup import meter_mapping
+from setting.ratelimitation.utils import control
+from setting.utils import ofputils
 import time
 
 
