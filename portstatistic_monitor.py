@@ -8,13 +8,15 @@ from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.lib import hub
 
 from setting.db.data_collection import switch_stat
+from setting.routing.utils.calculate_route import check_switch_load
+from routing_adjustment import Routing_UpdateEvent
 
 import logging
 import time
 import datetime
 
 class PortStatMonitor(app_manager.RyuApp):
-
+    _EVENTS = [Routing_UpdateEvent]
     """Class for Port Monitor."""
 
     def __init__(self, *args, **kwargs):
@@ -28,9 +30,15 @@ class PortStatMonitor(app_manager.RyuApp):
     def _monitor(self):
         while True:
             switch_list = get_switch(self.topology_api_app, None)
+            switch_id_list = []
             for datapath in switch_list:
                 self._update_sw_stas(datapath)
                 self._request_stats(datapath.dp)
+                switch_id_list.append(datapath.dp.id)
+            target_list = check_switch_load(switch_id_list, switch_stat, 0)
+            ev = Routing_UpdateEvent(target_list)
+            print 'evevevevevev', ev, ev.msg
+            self.send_event_to_observers(ev)
             hub.sleep(5)
 
     def _update_sw_stas(self, datapath):
@@ -84,21 +92,21 @@ class PortStatMonitor(app_manager.RyuApp):
             if stat.port_no in switch_stat.get(sw_dpid).get('alive_port'):
                 # Claculate statistics on each active port
                 self.logger.info(stat.port_no)
-                conter_list = [stat.port_no, stat.rx_bytes, stat.tx_bytes, stat.rx_dropped, stat.tx_dropped, stat.rx_errors, stat.tx_errors, stat.collisions]
-                port_stat = {stat.port_no: conter_list}
+                counter_list = [stat.port_no, stat.rx_bytes, stat.tx_bytes, stat.rx_dropped, stat.tx_dropped, stat.rx_errors, stat.tx_errors, stat.collisions]
+                port_stat = {stat.port_no: counter_list}
 
 
 
                 if switch_stat.get(sw_dpid).get('stats').get(stat.port_no) is not None:
 
                     his_stat = switch_stat.get(sw_dpid).get('stats').get(stat.port_no)
-                    self.logger.info('%s %s', conter_list, his_stat)
-                    self.logger.info('rx_byte %d', (conter_list[1] - his_stat[1])/5)
-                    self.logger.info('tx_byte %d', (conter_list[2] - his_stat[2])/5)
-                    self.logger.info('drop %d', (conter_list[3] - his_stat[3])/5)
-                    r = r + (conter_list[1] - his_stat[1])/5
-                    t = t + (conter_list[2] - his_stat[2])/5
-                    e = e + (conter_list[3] - his_stat[3])/5
+                    self.logger.info('%s %s', counter_list, his_stat)
+                    self.logger.info('rx_byte %d', (counter_list[1] - his_stat[1])/5)
+                    self.logger.info('tx_byte %d', (counter_list[2] - his_stat[2])/5)
+                    self.logger.info('drop %d', (counter_list[3] - his_stat[3])/5)
+                    r = r + (counter_list[1] - his_stat[1])/5
+                    t = t + (counter_list[2] - his_stat[2])/5
+                    e = e + (counter_list[3] + counter_list[4] - his_stat[3] - his_stat[4])/5
 
                 weight_list = [r, t, e]
                 port_weight = {stat.port_no: weight_list}
@@ -107,7 +115,7 @@ class PortStatMonitor(app_manager.RyuApp):
                 sw_stat = switch_stat.get(sw_dpid).get('stats')
                 sw_stat.update(port_stat)
                 sw_weight = switch_stat.get(sw_dpid).get('weight')
-                sw_stat.update(port_weight)
+                sw_weight.update(port_weight)
 
                 self.logger.info('=======')
 

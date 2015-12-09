@@ -13,6 +13,7 @@ from ryu.lib.packet import tcp
 from ryu.lib.packet import udp
 from ryu.topology.api import get_switch
 from ryu.lib.packet import arp
+from ryu.lib.packet import lldp
 from ryu.lib import mac
 
 from setting.utils import ofputils
@@ -20,6 +21,8 @@ from setting.variable import constant
 from setting.db import data_collection
 from setting.db import collection
 from setting.detect_gateway import utils as gateway_utils
+from setting.routing.utils.calculate_route import calculate_least_cost_path
+from setting.routing.utils.calculate_route import check_switch_load
 
 import networkx as nx
 
@@ -49,6 +52,7 @@ class forwarding(app_manager.RyuApp):
         pkt_eth = pkt.get_protocols(ethernet.ethernet)[0]
         pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
         pkt_arp = pkt.get_protocol(arp.arp)
+        pkt_lldp = pkt.get_protocol(lldp.lldp)
         # print pkt_eth.src, pkt_eth.dst
         if pkt_arp:
             # print 'arp'
@@ -69,8 +73,13 @@ class forwarding(app_manager.RyuApp):
                         check = 'whole'
                     self._handle_ipv4(msg, datapath, in_port, pkt_eth,
                                       pkt_ipv4, pkt, pkt_eth.dst, check)
-        else:
-            self._broadcast_pkt(msg)
+        # else:
+        #     if pkt_lldp:
+        #         print 'lldp'
+        #
+        #     else:
+        #
+        #         self._broadcast_pkt(msg)
 
     def _handle_ipv4(self, msg, datapath, port, pkt_ethernet, pkt_ipv4, pkt,
                      dst_mac, group_id):
@@ -228,18 +237,25 @@ class forwarding(app_manager.RyuApp):
         net.add_edge(dst_mac, int(dst_dpid))
         try:
             path = nx.shortest_path(net, src_mac, dst_mac)
+            path2 = nx.shortest_path(net, src_mac, dst_mac)
+            path2.pop()
+            path2.pop(0)
+            list_load = check_switch_load(path2, data_collection.switch_stat, 0)
+            target_path = None
             all_paths = nx.all_simple_paths(net, src_mac, dst_mac)
             path_list = list(all_paths)
-            # for path in path_list:
-            #     path_index = path_list.index(path)
-            #     for node in path:
-            #         index = path.index(node)
-            #         if index != 0 and index != len(ipv4_path)-1:
-            #             data_collection.switch_stat.get(index)
-
+            print path_list
+            if len(list_load) > 0:
+                all_paths = nx.all_simple_paths(net, src_mac, dst_mac)
+                path_list = list(all_paths)
+                target_path_index = calculate_least_cost_path(path_list, data_collection.switch_stat)
+                target_path = path_list[target_path_index]
+            else:
+                target_path = path
+            print target_path
         except Exception:
-            path = None
-        return path
+            target_path = None
+        return target_path
 
     def _check_ingroup(self, src_mac, src_ip, dst_mac, dst_ip):
         check = "-1"
@@ -299,16 +315,29 @@ class forwarding(app_manager.RyuApp):
     def _broadcast_pkt(self, msg):
         datapath = msg.datapath
         ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-
+        # parser = datapath.ofproto_parser
+        #
         data = None
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
             data = msg.data
-
-        actions = [parser.OFPActionOutput(ofproto.OFPP_FLOOD)]
-        out = parser.OFPPacketOut(datapath=datapath,
-                                  buffer_id=msg.buffer_id,
-                                  in_port=msg.match['in_port'],
-                                  actions=actions,
-                                  data=data)
-        datapath.send_msg(out)
+        #
+        # actions = [parser.OFPActionOutput(ofproto.OFPP_FLOOD)]
+        for sw in data_collection.switch_stat.keys():
+            switch = data_collection.switch_stat[sw]
+            port_list = switch.get('alive_port')
+            for port in port_list:
+                tuple_m = (sw, port)
+                if tuple_m not in data_collection.switch_inner_port:
+                    switch_m = get_switch(self.topology_api_app, dpid=sw)
+                    print 'rr', tuple_m
+                    if len(switch_m)!= 0:
+                        parser = switch_m[0].dp.ofproto_parser
+                        actions = [parser.OFPActionOutput(port)]
+                        out = parser.OFPPacketOut(datapath=switch_m[0].dp,
+                                                  in_port=ofproto.OFPP_CONTROLLER,
+                                                  buffer_id=msg.buffer_id,
+                                                  actions=actions,
+                                                  data=data)
+                        if sw != datapath.id and port != msg.match['in_port']:
+                            print 'rr', tuple_m
+                            switch_m[0].dp.send_msg(out)

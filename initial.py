@@ -66,12 +66,18 @@ class initial(app_manager.RyuApp):
         switches = [switch.dp.id for switch in switch_list]
         self.net.add_nodes_from(switches)
 
-        # for switch in switch_list:
-        #     self.nodes[switch.dp.id] = switch.dp
+        for switch in switch_list:
+           print switch.dp.id
 
         links_list = get_link(self.topology_api_app, None)
+
+
+
         links = [(link.src.dpid, link.dst.dpid, {'port': link.src.port_no})
                  for link in links_list]
+
+        print links
+
         self.net.add_edges_from(links)
 
         links = [(link.dst.dpid, link.src.dpid, {'port': link.dst.port_no})
