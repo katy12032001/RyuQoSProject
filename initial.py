@@ -45,6 +45,7 @@ class initial(app_manager.RyuApp):
                                     match=match, instructions=inst)
         datapath.send_msg(mod)
         self.get_topology_data()
+        print constant.Controller_IP
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -60,11 +61,18 @@ class initial(app_manager.RyuApp):
 
     def get_topology_data(self):
         """Topology Info Handling."""
+
+        net_sp = nx.Graph()
+
+
         self.net = nx.DiGraph()
 
         switch_list = get_switch(self.topology_api_app, None)
         switches = [switch.dp.id for switch in switch_list]
         self.net.add_nodes_from(switches)
+
+        net_sp.add_nodes_from(switches)
+
 
         for switch in switch_list:
            print switch.dp.id
@@ -83,6 +91,13 @@ class initial(app_manager.RyuApp):
         links = [(link.dst.dpid, link.src.dpid, {'port': link.dst.port_no})
                  for link in links_list]
         self.net.add_edges_from(links)
+
+
+
+        links = [(link.src.dpid, link.dst.dpid) for link in links_list]
+        net_sp.add_edges_from(links)
+        constant.ccc = nx.minimum_spanning_tree(net_sp)
+
 
         data_collection.switch_inner_port = []
         for link in links_list:

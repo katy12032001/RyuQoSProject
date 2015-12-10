@@ -35,8 +35,8 @@ class PortStatMonitor(app_manager.RyuApp):
                 self._update_sw_stas(datapath)
                 self._request_stats(datapath.dp)
                 switch_id_list.append(datapath.dp.id)
-            target_list = check_switch_load(switch_id_list, switch_stat, 0)
-            ev = Routing_UpdateEvent(target_list)
+            target_list = check_switch_load(switch_id_list, switch_stat, 131072)
+            ev = Routing_UpdateEvent(target_list, 131072)
             print 'evevevevevev', ev, ev.msg
             self.send_event_to_observers(ev)
             hub.sleep(5)
@@ -84,6 +84,8 @@ class PortStatMonitor(app_manager.RyuApp):
             switch_stat.get(sw_dpid).update({'weight': {}})
         if switch_stat.get(sw_dpid).get('cost') is None:
             switch_stat.get(sw_dpid).update({'cost': 0.0})
+        if switch_stat.get(sw_dpid).get('load') is None:
+            switch_stat.get(sw_dpid).update({'load': 0.0})
 
         r = 0
         t = 0
@@ -95,7 +97,9 @@ class PortStatMonitor(app_manager.RyuApp):
                 counter_list = [stat.port_no, stat.rx_bytes, stat.tx_bytes, stat.rx_dropped, stat.tx_dropped, stat.rx_errors, stat.tx_errors, stat.collisions]
                 port_stat = {stat.port_no: counter_list}
 
-
+                p_r = 0
+                p_t = 0
+                p_e = 0
 
                 if switch_stat.get(sw_dpid).get('stats').get(stat.port_no) is not None:
 
@@ -104,11 +108,14 @@ class PortStatMonitor(app_manager.RyuApp):
                     self.logger.info('rx_byte %d', (counter_list[1] - his_stat[1])/5)
                     self.logger.info('tx_byte %d', (counter_list[2] - his_stat[2])/5)
                     self.logger.info('drop %d', (counter_list[3] - his_stat[3])/5)
+                    p_r = (counter_list[1] - his_stat[1])/5
+                    p_t = (counter_list[2] - his_stat[2])/5
+                    p_e = (counter_list[3] + counter_list[4] - his_stat[3] - his_stat[4])/5
                     r = r + (counter_list[1] - his_stat[1])/5
                     t = t + (counter_list[2] - his_stat[2])/5
                     e = e + (counter_list[3] + counter_list[4] - his_stat[3] - his_stat[4])/5
 
-                weight_list = [r, t, e]
+                weight_list = [p_r, p_t, p_e]
                 port_weight = {stat.port_no: weight_list}
 
                 # Update port statistics
@@ -132,3 +139,4 @@ class PortStatMonitor(app_manager.RyuApp):
         if r != 0:
             self.logger.info('cost function: %f',float(pp)/float(r))
             switch_stat.get(sw_dpid).update({'cost': float(pp)/float(r)})
+        switch_stat.get(sw_dpid).update({'load': [r, t, e]})
