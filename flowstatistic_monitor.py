@@ -53,8 +53,9 @@ class flowstatistic_monitor(app_manager.RyuApp):
             self.send_event_to_observers(ev)
             switch_list = get_switch(self.topology_api_app, None)
             for dp in switch_list:
-                if str(dp.dp.id) == constant.Detect_switch_DPID:
-                    self._request_stats(dp.dp)
+                # if str(dp.dp.id) == constant.Detect_switch_DPID:
+                self._request_stats(dp.dp)
+                # break
             hub.sleep(5)
 
     def _request_stats(self, datapath):
@@ -65,14 +66,15 @@ class flowstatistic_monitor(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
     def _flow_stats_reply_handler(self, ev):
-        self.flow_list_re={}
+        self.flow_list_re = {}
         for stat in ev.msg.body:
             if stat.match.get('eth_type') == ether.ETH_TYPE_IP:
-                key_tuples = stat.match.get('eth_src')\
-                 + stat.match.get('eth_dst')\
-                 + stat.match.get('ipv4_src')\
-                 + stat.match.get('ipv4_dst')\
-                 + str(stat.match.get('ip_proto'))\
+                key_tuples = str(ev.msg.datapath.id)\
+                             + stat.match.get('eth_src')\
+                             + stat.match.get('eth_dst')\
+                             + stat.match.get('ipv4_src')\
+                             + stat.match.get('ipv4_dst')\
+                             + str(stat.match.get('ip_proto'))\
 
                 if stat.match.get('ip_proto') == inet.IPPROTO_TCP:
                     key_tuples += str(stat.match.get('tcp_src')) + str(stat.match.get('tcp_dst'))

@@ -7,6 +7,8 @@ from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from qos_control import Qos_UpdateEvent
 from setting.db import data_collection
 from setting.ratelimitation.setting import setup
+from setting.db.utils import flowutils
+from setting.variable import constant
 
 from route import urls
 
@@ -69,7 +71,8 @@ class FlowInfoSetupRest(ControllerBase):
     def get_flow_data(self, req, **kwargs):
         """Get Flow data method."""
         dic = {}
-        for key in data_collection.flow_list:
+        flow_list_in_dp = flowutils.get_flow_in_dp(constant.Detect_switch_DPID)
+        for key in flow_list_in_dp:
             flow_c = data_collection.flow_list[key]
             list_f = {"src_mac": flow_c.src_mac, "dst_mac": flow_c.dst_mac,
                       "src_ip": flow_c.src_ip, "dst_ip": flow_c.dst_ip,

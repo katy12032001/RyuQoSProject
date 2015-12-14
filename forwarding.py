@@ -53,14 +53,14 @@ class forwarding(app_manager.RyuApp):
         pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
         pkt_arp = pkt.get_protocol(arp.arp)
         pkt_lldp = pkt.get_protocol(lldp.lldp)
-        print pkt_eth.src, pkt_eth.dst
+        # print pkt_eth.src, pkt_eth.dst
         if pkt_arp:
-            print 'arp'
+            # print 'arp'
             self._handle_arp(msg, datapath, in_port, pkt_eth, pkt_arp)
 
         elif pkt_ipv4:
             gateway_utils.detect_gateway_main(pkt, datapath, in_port, data_collection.member_list)
-            print 'ipv4'
+            # print 'ipv4'
             if (pkt_eth.dst == mac.BROADCAST):
                 self._broadcast_pkt(msg)
             elif (pkt_ipv4.dst == self.broadip) or (pkt_ipv4.dst == self.broadip2):
@@ -75,13 +75,13 @@ class forwarding(app_manager.RyuApp):
                                       pkt_ipv4, pkt, pkt_eth.dst, check)
         else:
             if pkt_lldp:
-                print 'lldp'
+                pkt_lldp_s = 1
             else:
                 self._broadcast_pkt(msg)
 
     def _handle_ipv4(self, msg, datapath, port, pkt_ethernet, pkt_ipv4, pkt,
                      dst_mac, group_id):
-        print 'ipv4', group_id
+        # print 'ipv4', group_id
         parser = datapath.ofproto_parser
         group = data_collection.group_list.get(group_id)
         net = group.topology
@@ -190,7 +190,7 @@ class forwarding(app_manager.RyuApp):
             net = group.topology
             dst = data_collection.member_list.get(pkt_arp.dst_mac)
             if dst is not None:
-                print dst.port, dst.datapath
+                # print dst.port, dst.datapath
                 arp_path = self._generate_path(net, pkt_ethernet.src,
                                                pkt_ethernet.dst, port,
                                                dst.port, datapath.id,
@@ -239,21 +239,19 @@ class forwarding(app_manager.RyuApp):
         net.add_edge(src_mac, int(src_dpid))
         net.add_edge(int(dst_dpid), dst_mac, {'port': int(dst_port)})
         net.add_edge(dst_mac, int(dst_dpid))
+
+        target_path = None
         try:
             path = nx.shortest_path(net, src_mac, dst_mac)
             path2 = nx.shortest_path(net, src_mac, dst_mac)
             path2.pop()
             path2.pop(0)
-            list_load = check_switch_load(path2, data_collection.switch_stat, 1048576)
-            target_path = None
-            # all_paths = nx.all_simple_paths(net, src_mac, dst_mac)
-            # path_list = list(all_paths)
-            # print 'l1', path_list
+            list_load = check_switch_load(path2, data_collection.switch_stat, constant.load_limitation)
             if len(list_load) > 0:
-                print 'lui', list_load
+                # print 'lui', list_load
                 all_paths = nx.all_simple_paths(net, src_mac, dst_mac)
                 path_list = list(all_paths)
-                target_path_index = calculate_least_cost_path(path_list, data_collection.switch_stat, net)
+                target_path_index, target_path_cost = calculate_least_cost_path(path_list, data_collection.switch_stat, net)
                 target_path = path_list[target_path_index]
             else:
                 target_path = path
@@ -285,46 +283,37 @@ class forwarding(app_manager.RyuApp):
             m_dst = data_collection.member_list.get(dst_mac)
             if m_dst is not None and m_src is not None:
                 if m_dst.group_id == m_src.group_id:
-                    #if m_dst.group_id != 'whole':
-                    check = m_dst.group_id
+                    if constant.enable_ns == 1:
+                        if m_dst.group_id != 'whole':
+                            check = m_dst.group_id
+                    else:
+                        check = m_dst.group_id
         # print 'check', check
         return check
 
     def _handle_member_info(self, datapath, port, pkt_ethernet, pkt_arp):
-        returnid = None
         if data_collection.member_list.get(pkt_ethernet.src) is not None:
-            # print 'have register'
             member = data_collection.member_list.get(pkt_ethernet.src)
             member.datapath = datapath
             member.port = port
             member.ip = pkt_arp.src_ip
-            # returnid = member.group_id
-            # print member.datapath, member.port
             group = data_collection.group_list.get(member.group_id)
             if pkt_ethernet.src not in group.members:
                 group.members.append(pkt_ethernet.src)
         else:
-            # print 'none'
-            # if constant.NeedToAuth == 0 or pkt_ethernet.src == constant.Gateway_Mac:
-            # if pkt_ethernet.src == constant.Gateway_Mac:
             member = collection.Member(pkt_ethernet.src, "whole")
             member.datapath = datapath
             member.port = port
             member.ip = pkt_arp.src_ip
             data_collection.member_list.update({pkt_ethernet.src: member})
             data_collection.group_list.get('whole').members.append(pkt_ethernet.src)
-            # returnid = member.group_id
 
 
     def _broadcast_pkt(self, msg):
         datapath = msg.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-        # print '##', msg.match['in_port'], datapath.id
-        data = None
-        if msg.buffer_id == ofproto.OFP_NO_BUFFER:
-            data = msg.data
-        # print 'data', data
+
         group = data_collection.group_list.get('whole')
         net = group.topology
         aaa = constant.ccc.edge.get(datapath.id)
@@ -335,11 +324,11 @@ class forwarding(app_manager.RyuApp):
             a = []
             for ppp in port_list:
                 a.append(ppp)
-            print 'list', port_list, datapath.id
+            # print 'list', port_list, datapath.id
             for sw in lis:
                 port = net[datapath.id][sw]['port']
                 if port != msg.match['in_port']:
-                    print 'p', port
+                    # print 'p', port
                     actions = [parser.OFPActionOutput(port)]
                     out = parser.OFPPacketOut(datapath=datapath,
                                               in_port=msg.match['in_port'],

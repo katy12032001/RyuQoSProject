@@ -1,9 +1,5 @@
 from ryu.ofproto import ether, inet
-
-from setting.db import data_collection
 from setting.utils.ofputils import add_flow
-
-import networkx as nx
 
 def flow_adjust(net, path, flow):
     for node in path:

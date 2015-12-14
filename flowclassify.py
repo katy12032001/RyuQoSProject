@@ -4,6 +4,7 @@ from ryu.controller.handler import set_ev_cls
 
 from setting.variable import constant
 from setting.db import data_collection
+from setting.db.utils import flowutils
 from setting.utils import db_util
 from setting.flowclassification.utils import evaluator
 from setting.flowclassification.record import statistic
@@ -26,9 +27,10 @@ class flowclassify(app_manager.RyuApp):
     @set_ev_cls(APP_UpdateEvent)
     def app_event_handler(self, ev):
         print ('[INFO FlowClassify.app_event_handler] %s' % ev.msg)
+        flow_list_in_dp = flowutils.get_flow_in_dp(constant.Detect_switch_DPID)
         db_util.update_app_for_flows(data_collection.flow_list, constant.FlowClassification_IP)
-        evaluator.app_evaluation(data_collection.flow_list)
-        evaluator.member_evaluation(data_collection.flow_list, data_collection.member_list)
+        evaluator.app_evaluation(flow_list_in_dp)
+        evaluator.member_evaluation(flow_list_in_dp, data_collection.member_list)
         # print '[INFO FlowClassify._monitor]Flow Statistic Class\n>> member'
         # for key in statistic.database_member_record:
         #     print " >", key, statistic.database_member_record[key]

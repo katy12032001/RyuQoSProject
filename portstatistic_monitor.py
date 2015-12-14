@@ -10,6 +10,7 @@ from ryu.lib import hub
 from setting.db.data_collection import switch_stat
 from setting.routing.utils.calculate_route import check_switch_load
 from routing_adjustment import Routing_UpdateEvent
+from setting.variable import constant
 
 import logging
 import time
@@ -35,10 +36,12 @@ class PortStatMonitor(app_manager.RyuApp):
                 self._update_sw_stas(datapath)
                 self._request_stats(datapath.dp)
                 switch_id_list.append(datapath.dp.id)
-            target_list = check_switch_load(switch_id_list, switch_stat, 131072)
-            ev = Routing_UpdateEvent(target_list, 131072)
-            print 'evevevevevev', ev, ev.msg
-            self.send_event_to_observers(ev)
+            target_list = check_switch_load(switch_id_list, switch_stat, constant.load_limitation)
+            print'target_list', target_list, len(target_list)
+            if len(target_list) > 0:
+                ev = Routing_UpdateEvent(target_list, constant.load_limitation)
+                # print 'evevevevevev', ev, ev.msg
+                self.send_event_to_observers(ev)
             hub.sleep(5)
 
     def _update_sw_stas(self, datapath):

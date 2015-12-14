@@ -25,14 +25,22 @@ def calculate_least_cost_path(path_list, switch_stats, net):
                         counter_list = port_stats.get(tar_port)
                         # print 'tar_port', counter_list
                         if counter_list is not None:
-                            cost = counter_list[1] + counter_list[0] + cost
+                            if cost < (counter_list[1]+counter_list[0]):
+                                cost = counter_list[1]+counter_list[0]
+                            # if cost < counter_list[0]:
+                            #     cost = counter_list[0]
+                            # cost = counter_list[1] + counter_list[0] + cost
 
                         tar_port = net[path[index+1]][node]['port']
                         # print 'tar_port2', tar_port
                         counter_list = port_stats_2.get(tar_port)
                         # print 'counter_list2', counter_list
                         if counter_list is not None:
-                            cost = counter_list[1] + counter_list[0] + cost
+                            if cost < (counter_list[1]+counter_list[0]):
+                                cost = counter_list[1]+counter_list[0]
+                            # if cost < counter_list[0]:
+                            #     cost = counter_list[0]
+                            # cost = counter_list[1] + counter_list[0] + cost
 
 
         # print '@@@@@', path_index, cost
@@ -50,7 +58,7 @@ def calculate_least_cost_path(path_list, switch_stats, net):
             target_cost = cost
 
         print '@@@', target_path
-    return target_path
+    return target_path, target_cost
 
 def check_switch_load(switch_list, switch_stats, limitation):
     valid = 0
