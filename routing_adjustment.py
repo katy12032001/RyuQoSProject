@@ -39,7 +39,7 @@ class Routing_Adjustment(app_manager.RyuApp):
         print '@@####'
         datapath_list = ev.msg
         self.load = ev.load
-        self.sw_stat = data_collection.switch_stat
+        self.sw_stat = dict((k, v) for k, v in data_collection.switch_stat.items())
 
         for datapath_id in datapath_list:
             datapath = get_switch(self.topology_api_app, dpid=datapath_id)
