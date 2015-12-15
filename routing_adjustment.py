@@ -32,12 +32,14 @@ class Routing_Adjustment(app_manager.RyuApp):
         super(Routing_Adjustment, self).__init__(*args, **kwargs)
         self.topology_api_app = self
         self.load = 0
+        self.sw_stat = {}
 
     @set_ev_cls(Routing_UpdateEvent)
     def _routing_adjust(self, ev):
         print '@@####'
         datapath_list = ev.msg
         self.load = ev.load
+        self.sw_stat = data_collection.switch_stat
 
         for datapath_id in datapath_list:
             datapath = get_switch(self.topology_api_app, dpid=datapath_id)
@@ -55,29 +57,16 @@ class Routing_Adjustment(app_manager.RyuApp):
 
     # @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
     def _adjustment_handler(self, flow_list, dpid):
-        print '><>><><><>'
-        weight = data_collection.switch_stat.get(dpid)
+        weight = self.sw_stat.get(dpid)
         load = 0
         if weight is not None:
             if weight.get('load') is not None:
                 load = max(weight.get('load'))
-        # for stat in ev.msg.body:
-        #     if stat.match.get('eth_type') == ether.ETH_TYPE_IP:
-        #         key_tuples = stat.match.get('eth_src')\
-        #          + stat.match.get('eth_dst')\
-        #          + stat.match.get('ipv4_src')\
-        #          + stat.match.get('ipv4_dst')\
-        #          + str(stat.match.get('ip_proto'))\
-        #
-        #         if stat.match.get('ip_proto') == inet.IPPROTO_TCP:
-        #             key_tuples += str(stat.match.get('tcp_src'))\
-        #                               + str(stat.match.get('tcp_dst'))
-        #         elif stat.match.get('ip_proto') == inet.IPPROTO_UDP:
-        #             key_tuples += str(stat.match.get('udp_src'))\
-        #                               + str(stat.match.get('udp_dst'))
         for key_tuples in flow_list.keys():
             flow = data_collection.flow_list.get(key_tuples)
             # check_for_limit(flow, key_tuples)
+
+            # for new adjustment flow
             src = data_collection.member_list.get(flow.src_mac)
             kk = (str(src.datapath.id) + flow.src_mac + flow.dst_mac +
                   flow.src_ip + flow.dst_ip + str(flow.ip_proto) +
@@ -89,7 +78,8 @@ class Routing_Adjustment(app_manager.RyuApp):
                     flow.r_limited = 1
 
             if flow is not None and flow.r_limited == 0:
-                print 'flow_rate & load', key_tuples, flow.rate, load, key_tuples
+                print 'key', key_tuples
+                print 'flow_rate & load', flow.rate, load
                 flow.r_limited = 1
                 switch_list = get_switch(self.topology_api_app, None)
                 for sw in switch_list:
@@ -103,11 +93,11 @@ class Routing_Adjustment(app_manager.RyuApp):
                     flow_l = data_collection.flow_list.get(sw_flow_tuple)
                     if flow_l is not None:
                         flow_l.r_limited = 1
-                        
+
                 if load <= self.load:
                     break
-                elif self.load - flow.rate <= 0:
-                    continue
+                # elif self.load - flow.rate <= 0:
+                #     continue
                 else:
 
                     group = data_collection.group_list.get('whole')
@@ -126,9 +116,24 @@ class Routing_Adjustment(app_manager.RyuApp):
                     all_paths = nx.all_simple_paths(net, flow.src_mac,
                                                     flow.dst_mac)
                     path_list = list(all_paths)
-                    target_path_index, target_path_cost = calculate_least_cost_path(path_list, data_collection.switch_stat, net)
-                    if (target_path_cost + flow.rate) < (load - flow.rate):
-                        load = load - flow.rate
+                    target_path_index, target_path_cost = calculate_least_cost_path(path_list, self.sw_stat, net)
+
+                    valid_adjust = 1
+                    for node in path_list[target_path_index]:
+                        index = path_list[target_path_index].index(node)
+                        if index > 1 and index < len(path_list[target_path_index])-2:
+                            load_tar = self.sw_stat.get(node).get('load')
+                            print 'load_v', (max(load_tar) + flow.rate), self.load
+                            if (max(load_tar) + flow.rate) > self.load:
+                                valid_adjust = 0
+                    print 'valid_adjust', valid_adjust
+                    if valid_adjust == 1:
+                        #if (target_path_cost + flow.rate) < (load - flow.rate):
+                        src_m = data_collection.member_list.get(flow.src_mac)
+                        dst_m = data_collection.member_list.get(flow.dst_mac)
+                        if src_m.datapath.id != dpid and dst_m.datapath.id != dpid:
+                            load = load - flow.rate
+
                         target_path = path_list[target_path_index]
 
                         for node in target_path:
@@ -136,6 +141,11 @@ class Routing_Adjustment(app_manager.RyuApp):
                             if index != 0 and index != len(target_path)-1:
                                 switches = get_switch(self.topology_api_app, node)
                                 target_path[index] = switches[0].dp
+                                if index > 1 and index < len(target_path)-2:
+                                    cot = self.sw_stat.get(node).get('load')
+                                    cot[0] = cot[0]+flow.rate
+                                    cot[1] = cot[1]+flow.rate
+
 
 
                         print 't', target_path
