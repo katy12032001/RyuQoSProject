@@ -28,7 +28,7 @@ class flowclassify(app_manager.RyuApp):
     def app_event_handler(self, ev):
         print ('[INFO FlowClassify.app_event_handler] %s' % ev.msg)
         flow_list_in_dp = flowutils.get_flow_in_dp(constant.Detect_switch_DPID)
-        db_util.update_app_for_flows(data_collection.flow_list, constant.FlowClassification_IP)
+        db_util.update_app_for_flows(data_collection.flow_list, constant.FlowClassification_IP, constant.db_method)
         evaluator.app_evaluation(flow_list_in_dp)
         evaluator.member_evaluation(flow_list_in_dp, data_collection.member_list)
         # print '[INFO FlowClassify._monitor]Flow Statistic Class\n>> member'

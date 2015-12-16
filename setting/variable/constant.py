@@ -11,4 +11,5 @@ NeedToAuth = 0
 Capacity = 100
 enable_ns = 0
 ccc = None
-load_limitation = 101072
+load_limitation = 110000
+db_method = 'cloud'
