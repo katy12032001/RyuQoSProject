@@ -75,7 +75,7 @@ class forwarding(app_manager.RyuApp):
                                       pkt_ipv4, pkt, pkt_eth.dst, check)
         else:
             if pkt_lldp:
-                pkt_lldp_s = 1
+                return
             else:
                 self._broadcast_pkt(msg)
 

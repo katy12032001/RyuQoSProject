@@ -50,11 +50,12 @@ class Flow:
             self.exist = exist
             self.limited = 0
             self.r_limited = 0
+            self.counter = 0
 
         def rate_calculation(self):
             """calculate flow rate."""
             if self.byte_count_2 > self.byte_count_1:
-                self.rate = (float(self.byte_count_2) - float(self.byte_count_1))/5
+                self.rate = (float(self.byte_count_2) - float(self.byte_count_1))/1
 
 
 # class Port:

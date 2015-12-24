@@ -10,12 +10,7 @@ from ryu.ofproto import ether
 from ryu.ofproto import inet
 
 from setting.db import data_collection
-from setting.flowclassification.utils import evaluator
-from setting.flowclassification.record import statistic
-from setting.utils import db_util
 from qos_control import Qos_UpdateEvent
-
-from setting.variable import constant
 from setting.db import collection
 
 
@@ -56,7 +51,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
                 # if str(dp.dp.id) == constant.Detect_switch_DPID:
                 self._request_stats(dp.dp)
                 # break
-            hub.sleep(5)
+            hub.sleep(1)
 
     def _request_stats(self, datapath):
         parser = datapath.ofproto_parser
@@ -101,7 +96,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
 
                 elif stat.match.get('ip_proto') == inet.IPPROTO_UDP:
                     key_tuples += str(stat.match.get('udp_src'))\
-                                      +str(stat.match.get('udp_dst'))
+                                      + str(stat.match.get('udp_dst'))
                     if data_collection.flow_list.get(key_tuples) is None:
                         flow_value = collection.Flow(ev.msg.datapath.id,
                                                      stat.match.get('eth_src'),
