@@ -3,11 +3,13 @@ import json
 
 from ryu.base import app_manager
 from ryu.app.wsgi import ControllerBase, WSGIApplication, route
+from ryu.topology.api import get_switch
 from webob import Response
 
 from setting.db import data_collection
 from setting.variable import constant
 from setting.flowclassification.record import statistic
+from setting.dynamic_qos.utils import rate_setup
 
 from route import urls
 
@@ -31,7 +33,8 @@ class QosSetup(app_manager.RyuApp):
 
     def set_qos_parameter(self, capacity):
         constant.Capacity = capacity
-
+        switch_list = get_switch(self.topology_api_app, None)
+        rate_setup.init_meter_setup(constant.Capacity, switch_list)
 
 
 # curl -X PUT http://127.0.0.1:8080/set_qos_info/2

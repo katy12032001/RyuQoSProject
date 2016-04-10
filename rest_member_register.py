@@ -8,6 +8,8 @@ from webob import Response
 from setting.db import data_collection
 from setting.db import collection
 
+from route import urls
+
 url = '/handle_member_info/member/{memberid}'
 get_member_info_instance_name = 'get_member_info_api_app'
 
@@ -57,7 +59,7 @@ class member_register_rest(ControllerBase):
         super(member_register_rest, self).__init__(req, link, data, **config)
         self.get_member_info = data[get_member_info_instance_name]
 
-    @route('member_data', url, methods=['PUT'])
+    @route('member_data', url, methods=['GET'])
     def put_member_data_(self, req, **kwargs):
         """Put Member data method."""
         memberid = str(kwargs['memberid'])
@@ -70,3 +72,17 @@ class member_register_rest(ControllerBase):
             self.get_member_info.save_member_to_database(memberid, groupid)
             return Response(content_type='application/json',
                             body=str('Success'))
+
+    @route('member_list', urls.url_member_list, methods=['GET'])
+    def get_member_list(self, req, **kwargs):
+        dic = {}
+        for key in data_collection.member_list.keys():
+            member_info = {}
+            member_data = data_collection.member_list[key]
+            member_info.update({'IP': member_data.ip})
+            member_info.update({'MAC': key})
+            member_info.update({'Group': member_data.group_id})
+
+            dic.update({key: member_info})
+        body = json.dumps(dic)
+        return Response(content_type='application/json', body=body)

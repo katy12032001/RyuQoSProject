@@ -33,6 +33,8 @@ class FlowInfoSetup(app_manager.RyuApp):
 
     def set_ratelimite_for_app(self, appname, meter_id, group_id, state):
         """Set rate control for applications."""
+        print '########'
+        print '########'
         if setup.ratelimite_setup_for_specialcase.get(group_id) is not None:
             appset = setup.ratelimite_setup_for_specialcase.get(group_id)
             appset.update({appname: {'state': state, 'meter_id': int(meter_id)}})

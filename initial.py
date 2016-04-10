@@ -143,8 +143,9 @@ class initial(app_manager.RyuApp):
         """Switch add."""
         print "EventSwitchEnter"
         self.get_topology_data()
-        switch_list = get_switch(self.topology_api_app, None)
-        rate_setup.init_meter_setup(constant.Capacity, switch_list)
+        if constant.Capacity > 0:
+            switch_list = get_switch(self.topology_api_app, None)
+            rate_setup.init_meter_setup(constant.Capacity, switch_list)
 
     @set_ev_cls(event.EventSwitchLeave)
     def get_topology_for_swdelete(self, ev):

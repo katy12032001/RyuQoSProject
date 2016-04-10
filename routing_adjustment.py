@@ -1,11 +1,7 @@
 from ryu.base import app_manager
-from ryu.controller import ofp_event
-from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.topology.api import get_switch
 from ryu.controller.event import EventBase
-from ryu.ofproto import ether
-from ryu.ofproto import inet
 
 from setting.db.utils import flowutils
 from setting.db import data_collection
@@ -22,7 +18,6 @@ class Routing_UpdateEvent(EventBase):
         self.load = load
 
 
-
 class Routing_Adjustment(app_manager.RyuApp):
     _EVENTS = [Routing_UpdateEvent]
     """Routing_AdjustmentClass."""
@@ -36,26 +31,29 @@ class Routing_Adjustment(app_manager.RyuApp):
 
     @set_ev_cls(Routing_UpdateEvent)
     def _routing_adjust(self, ev):
-        print '@@####'
         datapath_list = ev.msg
         self.load = ev.load
         self.sw_stat = dict((k, v) for k, v in data_collection.switch_stat.items())
+        switch_list = get_switch(self.topology_api_app, None)
+        for datapath in switch_list:
+            flow_list_in_dp = flowutils.get_flow_in_dp(datapath.dp.id)
+            for key_tuples in flow_list_in_dp.keys():
+                flow = data_collection.flow_list.get(key_tuples)
+                if flow.r_limited > 3:
+                    flow.r_limited = 0
+                elif flow.r_limited >= 1 and flow.r_limited <= 3:
+                    flow.r_limited += 1
 
         for datapath_id in datapath_list:
             datapath = get_switch(self.topology_api_app, dpid=datapath_id)
             flow_list_in_dp = flowutils.get_flow_in_dp(datapath[0].dp.id)
             self._adjustment_handler(flow_list_in_dp, datapath[0].dp.id)
-            # flow_list_in_dp = db.._get_flow_in_dp(datapath[0].dp.id)
-            # self._request_stats(datapath[0].dp)
 
     def _request_stats(self, datapath):
         parser = datapath.ofproto_parser
         req = parser.OFPFlowStatsRequest(datapath)
         datapath.send_msg(req)
 
-
-
-    # @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
     def _adjustment_handler(self, flow_list, dpid):
         weight = self.sw_stat.get(dpid)
         load = 0
@@ -74,8 +72,8 @@ class Routing_Adjustment(app_manager.RyuApp):
 
             ff = data_collection.flow_list.get(kk)
             if ff is not None:
-                if ff.r_limited == 1:
-                    flow.r_limited = 1
+                if ff.r_limited >= 1:
+                    flow.r_limited = ff.r_limited
 
             if flow is not None and flow.r_limited == 0:
                 print 'key', key_tuples
@@ -145,8 +143,6 @@ class Routing_Adjustment(app_manager.RyuApp):
                                     cot = self.sw_stat.get(node).get('load')
                                     cot[0] = cot[0]+flow.rate
                                     cot[1] = cot[1]+flow.rate
-
-
 
                         print 't', target_path
                         flow_adjust(net, target_path, flow)

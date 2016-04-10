@@ -17,8 +17,10 @@ from setting.variable import constant
 
 import numpy
 import math
-import time
+import time, datetime
 import copy
+
+import logging
 
 class Qos_UpdateEvent(EventBase):
     def __init__(self, msg):
@@ -33,16 +35,23 @@ class QosControl(app_manager.RyuApp):
         super(QosControl, self).__init__(*args, **kwargs)
         self.monitor_thread = hub.spawn(self._monitor)
         self.topology_api_app = self
+        hdlr = logging.FileHandler('sdn_log_dynamic_control.log')
+        self.logger.addHandler(hdlr)
 
     def _monitor(self):
-        f = open("record_20150831.txt",  "rw+")
+        # f = open("record_20150831.txt",  "rw+")
         t0 = 0
         while True:
+            self.logger.info('---------------------')
             t1 = time.time()
+            st = datetime.datetime.fromtimestamp(t1).strftime('%Y-%m-%d %H:%M:%S')
+            self.logger.info('timestamp = %s', st)
             # self._control_manual()
-            self._control_dynamic(t0, t1, f)
-            hub.sleep(20)
+            self._control_dynamic(t0, t1)
+            self.logger.info('---------------------')
+            hub.sleep(5)
             t0 = t1
+
 
     @set_ev_cls(Qos_UpdateEvent)
     def _control_manual(self, ev):
@@ -66,7 +75,7 @@ class QosControl(app_manager.RyuApp):
                     control.set_ratelimite_for_member(mac, setting_m.get(group).get(mac).get("meter_id"), group, 'down', 'm')
                     setting_m.get(group).pop(mac)
 
-    def _control_dynamic(self, timestamp0, timestamp1, file):
+    def _control_dynamic(self, timestamp0, timestamp1):
         print 'INFO [qos_control._control_dynamic]\n  >>  dynamic control begin'
         group_list = data_collection.group_list.keys()
 
@@ -134,7 +143,7 @@ class QosControl(app_manager.RyuApp):
         rate_list = [statistic.database_app_record[key].rate for key in statistic.database_app_record]
         switch_list = get_switch(self.topology_api_app, None)
         rate_setup.rate_control_for_apps(rate_list, group_total_list, group_list,
-                                         ratio_app, switch_list, constant.Capacity)
+                                         ratio_app, switch_list, constant.Capacity, self.logger)
 
     def _get_all_data_from_db(self):
         group_list = data_collection.group_list.keys()

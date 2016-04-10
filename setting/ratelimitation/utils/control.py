@@ -8,7 +8,7 @@ def set_ratelimite_for_app(appname, meter_id, group, state, d_or_m):
         """Set rate control for applications."""
         flow_to_be_handle = []
         key_set = data_collection.flow_list.keys()
-        print key_set
+        print '==', key_set, d_or_m, state
         memberlist = data_collection.group_list.get(group).members
         for key in key_set:
             flow_info = data_collection.flow_list[key]
@@ -17,11 +17,11 @@ def set_ratelimite_for_app(appname, meter_id, group, state, d_or_m):
                     if state == 'up':
                         if flow_info.limited == 0:
                             flow_info.limited = 1
-                            flow_to_be_handle.append(flow_info)
+                        flow_to_be_handle.append(flow_info)
                     else:
                         if flow_info.limited == 1:
                             flow_info.limited = 0
-                            flow_to_be_handle.append(flow_info)
+                        flow_to_be_handle.append(flow_info)
 
         for flow in flow_to_be_handle:
             datapath = data_collection.member_list.get(flow.dst_mac).datapath
