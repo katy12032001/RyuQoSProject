@@ -33,8 +33,6 @@ class FlowInfoSetup(app_manager.RyuApp):
 
     def set_ratelimite_for_app(self, appname, meter_id, group_id, state):
         """Set rate control for applications."""
-        print '########'
-        print '########'
         if setup.ratelimite_setup_for_specialcase.get(group_id) is not None:
             appset = setup.ratelimite_setup_for_specialcase.get(group_id)
             appset.update({appname: {'state': state, 'meter_id': int(meter_id)}})
@@ -48,7 +46,7 @@ class FlowInfoSetup(app_manager.RyuApp):
 
     def set_ratelimite_for_mac(self, mac, meter_id, group_id, state):
         """Set rate control for applications."""
-        if setup.ratelimite_setup_for_specialcase.get(group_id) is not None:
+        if setup.ratelimite_setup_for_specialcase_member.get(group_id) is not None:
             memberset = setup.ratelimite_setup_for_specialcase_member.get(group_id)
             memberset.update({mac: {'state': state, 'meter_id': int(meter_id)}})
         else:
@@ -56,6 +54,18 @@ class FlowInfoSetup(app_manager.RyuApp):
 
         ev = Qos_UpdateEvent('Update qos for flow')
         self.send_event_to_observers(ev)
+
+    def set_ratelimite_for_l4(self, port, meter_id, group_id, state):
+        """Set rate control for applications."""
+        if setup.ratelimite_setup_for_specialcase_port.get(group_id) is not None:
+            memberset = setup.ratelimite_setup_for_specialcase_port.get(group_id)
+            memberset.update({port: {'state': state, 'meter_id': int(meter_id)}})
+        else:
+            setup.ratelimite_setup_for_specialcase_port.update({group_id: {port: {'state': state, 'meter_id': int(meter_id)}}})
+
+        ev = Qos_UpdateEvent('Update qos for flow')
+        self.send_event_to_observers(ev)
+        data_collection.meter_list.update({"drop": "-1"})
 
 # curl -X GET -d http://127.0.0.1:8080/flow_info_flow
 # curl -X PUT -d '{"meter_id" : "8192", "group_id" : "group_1", "state" : "up"}' http://127.0.0.1:8080/flow_info_app/a
@@ -109,3 +119,14 @@ class FlowInfoSetupRest(ControllerBase):
         state = str(json_link.get('state'))
 
         self.get_flow_info.set_ratelimite_for_mac(mac, meter_id, group_id, state)
+
+    @route('rate_for_port', urls.url_flow_port, methods=['PUT'])
+    def set_flow_for_ratelimite_for_port(self, req, **kwargs):
+        port = str(kwargs['port'])
+        content = req.body
+        json_link = json.loads(content)
+        meter_id = str(json_link.get('meter_id'))
+        group_id = str(json_link.get('group_id'))
+        state = str(json_link.get('state'))
+
+        self.get_flow_info.set_ratelimite_for_l4(port, meter_id, group_id, state)
