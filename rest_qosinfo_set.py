@@ -119,3 +119,20 @@ class QosSetupRest(ControllerBase):
                     dic.update({app: {'meterid': policy.get(app).get('meter_id'), 'speed': speed}})
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
+
+    @route('dpid_data', urls.url_dpid_list, methods=['GET'])
+    def get_dpid_list(self, req, **kwargs):
+        dic = {}
+        group_data = data_collection.group_list.get('whole')
+        switch_list = group_data.switches
+        for dp in switch_list:
+            dic.update({dp: dp})
+        body = json.dumps(dic)
+        return Response(content_type='application/json', body=body)
+
+    @route('switch_set', urls.url_dpid_set, methods=['PUT'])
+    def set_switch_data_(self, req, **kwargs):
+        dpid = str(kwargs['dpid'])
+        self.get_qos_info.set_switch_G(dpid)
+        return Response(content_type='application/json',
+                            body=str('Success'))
