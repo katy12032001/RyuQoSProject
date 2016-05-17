@@ -1,6 +1,6 @@
 ## Package
 
-- networkx, numpy, scipy, requests
+- networkx, numpy, scipy, requests, pymongo
 
 ## Changelog
 
